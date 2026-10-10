@@ -116,7 +116,7 @@ def generate_docker_compose(dst_dir: Path, context: Dict[str, Any]):
             "      POSTGRES_PASSWORD: postgrespassword",
             f"      POSTGRES_DB: {context.get('app_slug', 'app')}_db",
             "    ports:",
-            "      - '5432:5432'",
+            "      - '${POSTGRES_PORT:-5432}:5432'",
             "    volumes:",
             "      - postgres_data:/var/lib/postgresql/data",
             "    healthcheck:",

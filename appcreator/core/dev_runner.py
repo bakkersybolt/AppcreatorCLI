@@ -51,13 +51,24 @@ def run_dev_server(project_dir: Optional[Path] = None):
         if shutil.which("docker"):
             console.print("[dim yellow]📦 Database container opstarten via Docker Compose...[/dim yellow]")
             try:
-                subprocess.run(
+                res = subprocess.run(
                     ["docker", "compose", "up", "-d", "postgres"],
                     cwd=str(target_dir),
                     check=False,
                     capture_output=True,
+                    text=True,
                 )
-                console.print("[bold yellow][database][/bold yellow] PostgreSQL container is actief op poort 5432.")
+                if res.returncode == 0:
+                    console.print("[bold yellow][database][/bold yellow] PostgreSQL container is actief op poort 5432.")
+                else:
+                    err_output = (res.stderr or res.stdout or "").strip()
+                    if "port is already allocated" in err_output or "address already in use" in err_output:
+                        print_warning(
+                            "Poortconflict gedetecteerd: Poort 5432 is al in gebruik door een andere container of service!\n"
+                            "Controleer met 'docker ps' welke container op poort 5432 draait (bijv. 'docker stop <naam>')."
+                        )
+                    else:
+                        console.print(f"[dim red]Kon database container niet starten: {err_output}[/dim red]")
             except Exception as e:
                 console.print(f"[dim red]Kon database niet starten via Docker: {e}[/dim red]")
         else:
