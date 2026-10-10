@@ -1,6 +1,7 @@
 """AppCreator CLI - AI-Ready Project Scaffolding Tool."""
 
 import os
+import re
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -53,32 +54,60 @@ def main(ctx: typer.Context):
         create(app_naam=None)
 
 
-def vraag_kern_domein() -> Optional[str]:
-    """Laat de gebruiker een voorbeeld entiteit/domein kiezen voor de backend."""
-    keuze = questionary.select(
-        "Kies een primaire entiteit / kern domein voor de backend:",
+def parse_entity_names(raw: str) -> List[str]:
+    """Parseert en valideert een vrije/komma-gescheiden string met entiteitsnamen."""
+    if not raw or not raw.strip():
+        return []
+    # Verwijder mogelijke prefixen zoals 'custom:' of 'domeinen:'
+    cleaned = re.sub(r"^(custom|entities|domeinen|entiteiten):\s*", "", raw.strip(), flags=re.IGNORECASE)
+    # Splits op komma's of puntkomma's
+    if "," in cleaned or ";" in cleaned:
+        tokens = re.split(r"[,;]+", cleaned)
+    else:
+        tokens = cleaned.split()
+
+    results: List[str] = []
+    for token in tokens:
+        sub = re.sub(r"[^a-zA-Z0-9_]", "", token.strip())
+        if sub:
+            parts = sub.split("_")
+            pascal = "".join(p.capitalize() for p in parts if p)
+            if pascal and pascal not in results:
+                results.append(pascal)
+    return results
+
+
+def vraag_entiteiten() -> List[str]:
+    """Laat de gebruiker via een interactieve checkbox multiselect entiteiten kiezen."""
+    keuzes = questionary.checkbox(
+        "Selecteer welke voorbeeld-entiteiten / domeinen je wilt genereren in de backend:",
         choices=[
-            questionary.Choice("Item (Generiek / Standaard)", value="Item"),
-            questionary.Choice("User (Gebruikersbeheer)", value="User"),
-            questionary.Choice("Order (Bestellingen / E-commerce)", value="Order"),
-            questionary.Choice("Device / Sensor (IoT & Hardware)", value="Device"),
-            questionary.Choice("Custom (Zelf een entiteit opgeven...)", value="__custom__"),
-            questionary.Choice("Geen (Minimaal, alleen /health API)", value="__none__"),
+            questionary.Choice("Item (Generiek / Standaard)", value="Item", checked=True),
+            questionary.Choice("User (Gebruikersbeheer / Auth)", value="User", checked=False),
+            questionary.Choice("Order (Bestellingen / E-commerce)", value="Order", checked=False),
+            questionary.Choice("Device / Sensor (IoT & Hardware)", value="Device", checked=False),
+            questionary.Choice("Todo (Taken / Task Manager)", value="Todo", checked=False),
+            questionary.Choice("Custom (Zelf extra entiteiten opgeven...)", value="__custom__", checked=False),
         ],
-        default="Item",
     ).ask()
 
-    if keuze == "__custom__":
+    if keuzes is None:
+        return []
+
+    resultaat: List[str] = [k for k in keuzes if k != "__custom__"]
+
+    if "__custom__" in keuzes:
         invoer = questionary.text(
-            "Voer de naam van de primaire entiteit in (bijv. Customer, Ticket):",
-            default="Item",
+            "Voer je custom entiteiten in (bijv. 'Customer, Product, Ticket'):",
+            default="",
         ).ask()
-        if invoer and invoer.strip():
-            return invoer.strip().capitalize()
-        return "Item"
-    elif keuze == "__none__":
-        return None
-    return keuze
+        if invoer:
+            custom_items = parse_entity_names(invoer)
+            for item in custom_items:
+                if item not in resultaat:
+                    resultaat.append(item)
+
+    return resultaat
 
 
 @app.command()
@@ -136,8 +165,9 @@ def create(
             default="postgres",
         ).ask()
         stack_config["database"] = db_keuze
-
-        stack_config["kern_domein"] = vraag_kern_domein()
+        entiteiten = vraag_entiteiten()
+        stack_config["entiteiten"] = entiteiten
+        stack_config["kern_domein"] = entiteiten[0] if entiteiten else None
 
     elif geselecteerde_cat == "backend":
         stack_config["backend"] = "fastapi"
@@ -148,7 +178,9 @@ def create(
             default="postgres",
         ).ask()
         stack_config["database"] = db_keuze
-        stack_config["kern_domein"] = vraag_kern_domein()
+        entiteiten = vraag_entiteiten()
+        stack_config["entiteiten"] = entiteiten
+        stack_config["kern_domein"] = entiteiten[0] if entiteiten else None
 
     elif geselecteerde_cat == "embedded":
         stack_config["hardware"] = "esp32"
@@ -204,6 +236,7 @@ def create(
         "frontend": stack_config.get("frontend"),
         "hardware": stack_config.get("hardware"),
         "database": stack_config.get("database"),
+        "entiteiten": stack_config.get("entiteiten"),
         "skills": gekozen_skills,
         "install_deps": install_deps,
         "init_git": init_git,

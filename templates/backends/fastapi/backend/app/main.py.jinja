@@ -6,6 +6,9 @@ from app.api.v1.router import api_router
 from app.db.base import Base
 {% if database != "none" %}
 from app.db.session import engine
+{% if entiteiten %}
+import app.models  # noqa: F401 - Zorgt dat Base.metadata alle entiteiten registreert
+{% endif %}
 {% endif %}
 
 

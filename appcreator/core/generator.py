@@ -68,8 +68,8 @@ def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
     for root, dirs, files in os.walk(src_dir):
         rel_root = Path(root).relative_to(src_dir)
 
-        # Skip pycache and hidden system dirs
-        if any(part.startswith("__pycache__") for part in rel_root.parts):
+        # Skip pycache, entity templates and hidden system dirs
+        if any(part.startswith("__pycache__") or part.startswith("_") for part in rel_root.parts):
             continue
 
         for file_name in files:
@@ -209,6 +209,13 @@ def assemble_project(
     target_dir: Path,
 ) -> Path:
     """Assembles all layers and renders the project into target_dir."""
+    entiteiten = stack.get("entiteiten")
+    if entiteiten is None:
+        if stack.get("kern_domein"):
+            entiteiten = [stack["kern_domein"]]
+        else:
+            entiteiten = []
+
     app_slug = app_naam.lower().replace(" ", "-").replace("_", "-")
     context = {
         "app_naam": app_naam,
@@ -218,7 +225,8 @@ def assemble_project(
         "frontend": stack.get("frontend"),
         "hardware": stack.get("hardware"),
         "database": stack.get("database", "none"),
-        "kern_domein": stack.get("kern_domein"),
+        "entiteiten": entiteiten,
+        "kern_domein": entiteiten[0] if entiteiten else None,
         "skills": skills,
     }
 
@@ -233,6 +241,26 @@ def assemble_project(
     if stack.get("backend") == "fastapi":
         backend_dir = TEMPLATES_DIR / "backends" / "fastapi"
         copy_and_render_tree(backend_dir, target_dir, context)
+
+        # Render entity-templates voor elke geselecteerde entiteit
+        if entiteiten:
+            entity_tpl_dir = TEMPLATES_DIR / "backends" / "fastapi" / "_entity_templates"
+            model_tpl = entity_tpl_dir / "model.py.jinja"
+            schema_tpl = entity_tpl_dir / "schema.py.jinja"
+            endpoint_tpl = entity_tpl_dir / "endpoint.py.jinja"
+
+            for entiteit in entiteiten:
+                slug = entiteit.lower()
+                ent_context = dict(context)
+                ent_context["kern_domein"] = entiteit
+                ent_context["entiteit"] = entiteit
+
+                if model_tpl.exists():
+                    render_file(model_tpl, target_dir / "backend" / "app" / "models" / f"{slug}.py", ent_context)
+                if schema_tpl.exists():
+                    render_file(schema_tpl, target_dir / "backend" / "app" / "schemas" / f"{slug}.py", ent_context)
+                if endpoint_tpl.exists():
+                    render_file(endpoint_tpl, target_dir / "backend" / "app" / "api" / "v1" / "endpoints" / f"{slug}.py", ent_context)
 
     if stack.get("frontend") == "vue3":
         frontend_dir = TEMPLATES_DIR / "frontends" / "vue3"

@@ -1,0 +1,6 @@
+# Models package
+{% for e in entiteiten %}
+from app.models.{{ e | lower }} import {{ e }}
+{% endfor %}
+
+__all__ = [{% for e in entiteiten %}"{{ e }}"{% if not loop.last %}, {% endif %}{% endfor %}]

@@ -55,6 +55,10 @@ def print_summary_card(project_data: dict):
         table.add_row("Hardware / Embedded", project_data["hardware"])
     if "database" in project_data and project_data["database"]:
         table.add_row("Database", project_data["database"])
+    if "entiteiten" in project_data and project_data["entiteiten"]:
+        table.add_row("Entiteiten", ", ".join(project_data["entiteiten"]))
+    elif "kern_domein" in project_data and project_data["kern_domein"]:
+        table.add_row("Entiteit", project_data["kern_domein"])
 
     skills = project_data.get("skills", [])
     if skills:

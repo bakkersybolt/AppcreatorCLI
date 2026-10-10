@@ -200,3 +200,59 @@ def test_generate_backend_without_entity(tmp_dir):
     assert (target / "backend" / "app" / "models" / "__init__.py").is_file()
     assert (target / "backend" / "app" / "schemas" / "__init__.py").is_file()
 
+
+def test_parse_entity_names():
+    from appcreator.main import parse_entity_names
+
+    assert parse_entity_names("custom: item, user, todo") == ["Item", "User", "Todo"]
+    assert parse_entity_names("Item, User, Todo") == ["Item", "User", "Todo"]
+    assert parse_entity_names("customer; order; ticket") == ["Customer", "Order", "Ticket"]
+    assert parse_entity_names("user_profile, order_item") == ["UserProfile", "OrderItem"]
+    assert parse_entity_names("") == []
+
+
+def test_generate_backend_with_multiple_entities(tmp_dir):
+    app_naam = "MultiEntityBackend"
+    target = tmp_dir / app_naam
+
+    assemble_project(
+        app_naam=app_naam,
+        category="backend",
+        stack={
+            "backend": "fastapi",
+            "database": "postgres",
+            "entiteiten": ["Item", "User", "Todo"],
+        },
+        skills=[],
+        target_dir=target,
+    )
+
+    # Verifieer individuele models
+    assert (target / "backend" / "app" / "models" / "item.py").is_file()
+    assert (target / "backend" / "app" / "models" / "user.py").is_file()
+    assert (target / "backend" / "app" / "models" / "todo.py").is_file()
+
+    # Verifieer individuele schemas
+    assert (target / "backend" / "app" / "schemas" / "item.py").is_file()
+    assert (target / "backend" / "app" / "schemas" / "user.py").is_file()
+    assert (target / "backend" / "app" / "schemas" / "todo.py").is_file()
+
+    # Verifieer endpoints
+    assert (target / "backend" / "app" / "api" / "v1" / "endpoints" / "item.py").is_file()
+    assert (target / "backend" / "app" / "api" / "v1" / "endpoints" / "user.py").is_file()
+    assert (target / "backend" / "app" / "api" / "v1" / "endpoints" / "todo.py").is_file()
+
+    # Verifieer models/__init__.py
+    models_init = (target / "backend" / "app" / "models" / "__init__.py").read_text()
+    assert "from app.models.item import Item" in models_init
+    assert "from app.models.user import User" in models_init
+    assert "from app.models.todo import Todo" in models_init
+
+    # Verifieer router.py imports en routes
+    router_code = (target / "backend" / "app" / "api" / "v1" / "router.py").read_text()
+    assert "health, item, user, todo" in router_code
+    assert 'api_router.include_router(item.router, prefix="/items", tags=["Items"])' in router_code
+    assert 'api_router.include_router(user.router, prefix="/users", tags=["Users"])' in router_code
+    assert 'api_router.include_router(todo.router, prefix="/todos", tags=["Todos"])' in router_code
+
+

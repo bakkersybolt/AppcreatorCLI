@@ -21,6 +21,9 @@ Dit project is gegenereerd via AppCreator CLI.
 {% if database and database != "none" %}
 - **Database:** {{ database }}
 {% endif %}
-{% if kern_domein %}
+{% if entiteiten %}
+- **Entiteiten / Kern Domeinen:** {{ entiteiten | join(', ') }}
+{% elif kern_domein %}
 - **Kern Entiteit / Domein:** {{ kern_domein }}
 {% endif %}
+

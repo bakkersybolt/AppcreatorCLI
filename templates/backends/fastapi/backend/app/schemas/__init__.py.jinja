@@ -1,0 +1,4 @@
+# Schemas package
+{% for e in entiteiten %}
+from app.schemas.{{ e | lower }} import {{ e }}Base, {{ e }}Create, {{ e }}Response
+{% endfor %}

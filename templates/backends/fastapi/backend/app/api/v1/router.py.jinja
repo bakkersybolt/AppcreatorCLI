@@ -1,13 +1,9 @@
 from fastapi import APIRouter
-{% if kern_domein %}
-from app.api.v1.endpoints import health, {{ kern_domein | lower }}
-{% else %}
-from app.api.v1.endpoints import health
-{% endif %}
+from app.api.v1.endpoints import health{% for e in entiteiten %}, {{ e | lower }}{% endfor %}
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["Health"])
-{% if kern_domein %}
-api_router.include_router({{ kern_domein | lower }}.router, prefix="/{{ kern_domein | lower }}s", tags=["{{ kern_domein }}s"])
-{% endif %}
 
+{% for e in entiteiten %}
+api_router.include_router({{ e | lower }}.router, prefix="/{{ e | lower }}s", tags=["{{ e }}s"])
+{% endfor %}
