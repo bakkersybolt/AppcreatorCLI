@@ -40,7 +40,14 @@ def test_generate_fullstack_project(tmp_dir):
     assert (target / "docker-compose.yml").is_file()
     assert (target / ".gitignore").is_file()
     assert (target / "README.md").is_file()
+    assert (target / "dev.sh").is_file()
     assert (target / ".appcreator.json").is_file()
+
+    # Verifieer dev.sh opstartscript
+    dev_sh_content = (target / "dev.sh").read_text()
+    assert "uvicorn" in dev_sh_content
+    assert "npm run dev" in dev_sh_content
+    assert "postgres" in dev_sh_content
 
     # Verifieer backend inhoud
     backend_main = (target / "backend" / "app" / "main.py").read_text()

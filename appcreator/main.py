@@ -380,5 +380,34 @@ def show_info():
     console.print(table)
 
 
+@app.command(name="dev")
+def dev(
+    project_dir: Optional[Path] = typer.Option(
+        None,
+        "--dir",
+        "-d",
+        help="Pad naar het project (standaard huidige map)",
+    ),
+):
+    """Start lokale ontwikkelingsservices (database, backend, frontend) met realtime gecombineerde logs."""
+    from appcreator.core.dev_runner import run_dev_server
+
+    print_banner()
+    run_dev_server(project_dir=project_dir)
+
+
+@app.command(name="start")
+def start(
+    project_dir: Optional[Path] = typer.Option(
+        None,
+        "--dir",
+        "-d",
+        help="Pad naar het project (standaard huidige map)",
+    ),
+):
+    """Alias voor 'appcreator dev'."""
+    dev(project_dir=project_dir)
+
+
 if __name__ == "__main__":
     app()

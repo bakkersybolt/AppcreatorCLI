@@ -48,9 +48,16 @@ def render_file(src_path: Path, dst_path: Path, context: Dict[str, Any]):
         content = src_path.read_text(encoding="utf-8")
         rendered = render_string(content, context)
         dst_path.write_text(rendered, encoding="utf-8")
+        if dst_path.name.endswith(".sh"):
+            dst_path.chmod(dst_path.stat().st_mode | 0o111)
     except Exception:
         # Fallback to direct copy if rendering fails
         shutil.copy2(src_path, dst_path)
+        if dst_path.name.endswith(".sh"):
+            try:
+                dst_path.chmod(dst_path.stat().st_mode | 0o111)
+            except Exception:
+                pass
 
 
 def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):

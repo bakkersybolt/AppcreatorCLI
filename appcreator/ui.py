@@ -80,9 +80,11 @@ def print_success_card(app_naam: str, doel_pad: str, installed_skills: list):
         f"[bold yellow]👉 Volgende stappen:[/bold yellow]\n"
         f"  1. Ga naar je projectmap:\n"
         f"     [cyan]cd {app_naam}[/cyan]\n\n"
-        f"  2. Open het project in Google Antigravity of Cursor:\n"
+        f"  2. Start de ontwikkelomgeving met gecombineerde logs:\n"
+        f"     [bold cyan]appcreator dev[/bold cyan]  (of [cyan]./dev.sh[/cyan])\n\n"
+        f"  3. Open het project in Google Antigravity of VS Code:\n"
         f"     [cyan]antigravity .[/cyan]  (of code .)\n\n"
-        f"  3. Voer in de chat de startskill uit om direct de architect-intake te starten:\n"
+        f"  4. Voer in de chat de startskill uit om direct de architect-intake te starten:\n"
         f"     [bold yellow]/init-project[/bold yellow] (of open [dim].agents/skills/init-project/SKILL.md[/dim])\n"
     )
 
