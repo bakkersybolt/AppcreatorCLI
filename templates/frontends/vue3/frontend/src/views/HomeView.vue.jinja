@@ -1,0 +1,94 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { api } from '@/services/api'
+
+const backendStatus = ref<'checking' | 'connected' | 'disconnected'>('checking')
+const backendInfo = ref<any>(null)
+
+const checkBackend = async () => {
+  backendStatus.value = 'checking'
+  try {
+    const res = await api.get('/health')
+    backendInfo.value = res.data
+    backendStatus.value = 'connected'
+  } catch (err) {
+    backendStatus.value = 'disconnected'
+  }
+}
+
+onMounted(() => {
+  checkBackend()
+})
+</script>
+
+<template>
+  <div class="max-w-4xl mx-auto space-y-8 py-6">
+    <!-- Hero Header -->
+    <div class="p-8 rounded-2xl bg-card border shadow-sm space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+        <span>🚀 AppCreator Boilerplate</span>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-foreground">
+        Welkom bij {{ app_naam }}
+      </h1>
+      <p class="text-muted-foreground text-base max-w-2xl leading-relaxed">
+        Je Vue 3 frontend en FastAPI backend zijn succesvol geconfigureerd. Gebruik Google Antigravity om direct verder te bouwen met interactieve AI-skills.
+      </p>
+    </div>
+
+    <!-- Systeemstatus Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Backend Status Kaart -->
+      <div class="p-6 rounded-xl border bg-card space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-lg">Backend API Status</h2>
+          <span
+            v-if="backendStatus === 'connected'"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+          >
+            ● Verbonden
+          </span>
+          <span
+            v-else-if="backendStatus === 'checking'"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+          >
+            Controleert...
+          </span>
+          <span
+            v-else
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+          >
+            ● Niet bereikbaar
+          </span>
+        </div>
+        <p class="text-sm text-muted-foreground">
+          Controleert automatisch verbinding met <code class="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">/api/v1/health</code>.
+        </p>
+        <button
+          @click="checkBackend"
+          class="text-xs font-medium px-3 py-1.5 rounded-lg border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Opnieuw testen
+        </button>
+      </div>
+
+      <!-- AI Skills Kickoff Kaart -->
+      <div class="p-6 rounded-xl border bg-card space-y-4">
+        <h2 class="font-semibold text-lg">Google Antigravity AI Skills</h2>
+        <p class="text-sm text-muted-foreground">
+          Start in de chat direct de gewenste workflow:
+        </p>
+        <ul class="text-xs space-y-2 font-mono">
+          <li class="p-2 rounded bg-muted/50 flex justify-between items-center">
+            <span class="text-primary font-bold">/init-project</span>
+            <span class="text-muted-foreground">Omgeving & setup intake</span>
+          </li>
+          <li class="p-2 rounded bg-muted/50 flex justify-between items-center">
+            <span class="text-primary font-bold">/brainstorm-architect</span>
+            <span class="text-muted-foreground">Shadcn UI & Datamodellen</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>

@@ -1,0 +1,37 @@
+import typer
+from rich.console import Console
+from rich.panel import Panel
+
+app = typer.Typer(
+    name="{{ app_slug }}",
+    help="{{ app_naam }} - AI-ready CLI applicatie.",
+    add_completion=False,
+)
+console = Console()
+
+
+@app.command()
+def hello(
+    name: str = typer.Argument("Wereld", help="De naam van de persoon die je wilt begroeten"),
+    count: int = typer.Option(1, "--count", "-c", help="Aantal keren groeten"),
+):
+    """Eenvoudig begroetingscommando met Rich opmaak."""
+    for _ in range(count):
+        console.print(f"[bold cyan]Hallo {name}![/bold cyan] Welkom bij [green]{{ app_naam }}[/green] 🚀")
+
+
+@app.command()
+def info():
+    """Toont projectinformatie en status."""
+    content = (
+        "[bold white]{{ app_naam }}[/bold white]\n"
+        "[dim]Gegenereerd via AppCreator CLI[/dim]\n\n"
+        "• [cyan]Versie:[/cyan] 0.1.0\n"
+        "• [cyan]Framework:[/cyan] Typer + Rich\n"
+        "• [cyan]AI-Ready:[/cyan] .agents/skills/ & rules geactiveerd"
+    )
+    console.print(Panel(content, title="ℹ️ Project Info", border_style="cyan"))
+
+
+if __name__ == "__main__":
+    app()

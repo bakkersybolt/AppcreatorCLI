@@ -1,0 +1,16 @@
+from typer.testing import CliRunner
+from {{ app_slug }}.main import app
+
+runner = CliRunner()
+
+
+def test_hello_command():
+    result = runner.invoke(app, ["hello", "Sybolt"])
+    assert result.exit_code == 0
+    assert "Hallo Sybolt!" in result.stdout
+
+
+def test_info_command():
+    result = runner.invoke(app, ["info"])
+    assert result.exit_code == 0
+    assert "{{ app_naam }}" in result.stdout

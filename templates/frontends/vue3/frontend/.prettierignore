@@ -1,0 +1,8 @@
+# Dependencies & Builds
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Auto-generated schemas
+src/types/schema.d.ts

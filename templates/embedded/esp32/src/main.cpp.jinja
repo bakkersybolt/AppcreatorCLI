@@ -1,0 +1,48 @@
+#include <Arduino.h>
+#include <ArduinoJson.h>
+
+#define LED_PIN 2
+
+unsigned long lastPrintTime = 0;
+const unsigned long printInterval = 5000; // Elke 5 seconden heartbeat
+
+void setup() {
+    Serial.begin(115200);
+    delay(1000);
+
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, LOW);
+
+    Serial.println();
+    Serial.println("======================================");
+    Serial.println("🚀 {{ app_naam }} - ESP32 Firmware Gestart");
+    Serial.println("Geconfigureerd via AppCreator CLI");
+    Serial.println("======================================");
+}
+
+void loop() {
+    unsigned long currentMillis = millis();
+
+    // Knipper LED als activiteitsindicator
+    digitalWrite(LED_PIN, HIGH);
+    delay(50);
+    digitalWrite(LED_PIN, LOW);
+
+    // Periodieke heartbeat op de Serial monitor
+    if (currentMillis - lastPrintTime >= printInterval) {
+        lastPrintTime = currentMillis;
+
+        JsonDocument doc;
+        doc["app"] = "{{ app_naam }}";
+        doc["uptime_ms"] = currentMillis;
+        doc["status"] = "online";
+        doc["free_heap"] = ESP.getFreeHeap();
+
+        String output;
+        serializeJson(doc, output);
+        Serial.print("❤️ Heartbeat: ");
+        Serial.println(output);
+    }
+
+    delay(950);
+}

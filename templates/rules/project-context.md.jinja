@@ -1,0 +1,26 @@
+---
+description: "Globale projectmetadata, repository context en omgevingsdetails. Geldt voor de gehele repository."
+alwaysOn: true
+---
+
+## Context van dit project
+
+Dit project is gegenereerd via AppCreator CLI.
+
+- **Projectnaam:** {{ app_naam }}
+- **Categorie:** {{ category }}
+{% if backend %}
+- **Backend:** {{ backend }}
+{% endif %}
+{% if frontend %}
+- **Frontend:** {{ frontend }}
+{% endif %}
+{% if hardware %}
+- **Hardware / Embedded:** {{ hardware }}
+{% endif %}
+{% if database and database != "none" %}
+- **Database:** {{ database }}
+{% endif %}
+{% if kern_domein %}
+- **Kern Entiteit / Domein:** {{ kern_domein }}
+{% endif %}
