@@ -31,10 +31,10 @@ app = typer.Typer(
 )
 
 CATEGORIEEN = [
-    {"key": "fullstack", "name": "🌐 Fullstack Web & API (Vue 3 + FastAPI + Database)"},
-    {"key": "backend", "name": "⚡ Backend API Only (FastAPI + Database)"},
-    {"key": "embedded", "name": "📡 Embedded / IoT (ESP32 + PlatformIO C++)"},
-    {"key": "cli", "name": "💻 Python CLI Tool (Typer + Rich)"},
+    {"key": "fullstack", "name": "Fullstack Web & API (Vue 3 + FastAPI + Database)"},
+    {"key": "backend", "name": "Backend API Only (FastAPI + Database)"},
+    {"key": "embedded", "name": "Embedded / IoT (ESP32 + PlatformIO C++)"},
+    {"key": "cli", "name": "Python CLI Tool (Typer + Rich)"},
 ]
 
 OPTIONELE_SKILLS = [
@@ -51,6 +51,34 @@ def main(ctx: typer.Context):
     """Standaard entrypoint: start de interactieve wizard als er geen subcommando is opgegeven."""
     if ctx.invoked_subcommand is None:
         create(app_naam=None)
+
+
+def vraag_kern_domein() -> Optional[str]:
+    """Laat de gebruiker een voorbeeld entiteit/domein kiezen voor de backend."""
+    keuze = questionary.select(
+        "Kies een primaire entiteit / kern domein voor de backend:",
+        choices=[
+            questionary.Choice("Item (Generiek / Standaard)", value="Item"),
+            questionary.Choice("User (Gebruikersbeheer)", value="User"),
+            questionary.Choice("Order (Bestellingen / E-commerce)", value="Order"),
+            questionary.Choice("Device / Sensor (IoT & Hardware)", value="Device"),
+            questionary.Choice("Custom (Zelf een entiteit opgeven...)", value="__custom__"),
+            questionary.Choice("Geen (Minimaal, alleen /health API)", value="__none__"),
+        ],
+        default="Item",
+    ).ask()
+
+    if keuze == "__custom__":
+        invoer = questionary.text(
+            "Voer de naam van de primaire entiteit in (bijv. Customer, Ticket):",
+            default="Item",
+        ).ask()
+        if invoer and invoer.strip():
+            return invoer.strip().capitalize()
+        return "Item"
+    elif keuze == "__none__":
+        return None
+    return keuze
 
 
 @app.command()
@@ -109,11 +137,7 @@ def create(
         ).ask()
         stack_config["database"] = db_keuze
 
-        domein = questionary.text(
-            "Wat is de primaire entiteit / kern domein? (bijv. 'Item', 'User', 'Sensor')",
-            default="Item",
-        ).ask()
-        stack_config["kern_domein"] = domein.capitalize() if domein else "Item"
+        stack_config["kern_domein"] = vraag_kern_domein()
 
     elif geselecteerde_cat == "backend":
         stack_config["backend"] = "fastapi"
@@ -124,12 +148,7 @@ def create(
             default="postgres",
         ).ask()
         stack_config["database"] = db_keuze
-
-        domein = questionary.text(
-            "Wat is de primaire entiteit / kern domein? (bijv. 'Item', 'User', 'Sensor')",
-            default="Item",
-        ).ask()
-        stack_config["kern_domein"] = domein.capitalize() if domein else "Item"
+        stack_config["kern_domein"] = vraag_kern_domein()
 
     elif geselecteerde_cat == "embedded":
         stack_config["hardware"] = "esp32"

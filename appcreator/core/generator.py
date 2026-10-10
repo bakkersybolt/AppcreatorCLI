@@ -66,6 +66,10 @@ def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
             continue
 
         for file_name in files:
+            # Sla entiteit-specifieke sjablonen over als er geen kern_domein is gekozen
+            if not context.get("kern_domein") and "kern_domein" in file_name:
+                continue
+
             src_file = Path(root) / file_name
 
             # Resolve template variables in target file path (e.g. {{ app_slug }})
@@ -207,7 +211,7 @@ def assemble_project(
         "frontend": stack.get("frontend"),
         "hardware": stack.get("hardware"),
         "database": stack.get("database", "none"),
-        "kern_domein": stack.get("kern_domein", "Item"),
+        "kern_domein": stack.get("kern_domein"),
         "skills": skills,
     }
 

@@ -159,3 +159,37 @@ def test_add_skill_manifest_flow(tmp_dir):
 
     manifest_after = load_manifest(target)
     assert "docker-devops" in manifest_after["skills"]
+
+
+def test_generate_backend_without_entity(tmp_dir):
+    app_naam = "CleanBackend"
+    target = tmp_dir / app_naam
+
+    assemble_project(
+        app_naam=app_naam,
+        category="backend",
+        stack={
+            "backend": "fastapi",
+            "database": "sqlite",
+            "kern_domein": None,
+        },
+        skills=[],
+        target_dir=target,
+    )
+
+    # Verifieer dat router.py geen foutieve imports of routers bevat
+    router_code = (target / "backend" / "app" / "api" / "v1" / "router.py").read_text()
+    assert "health" in router_code
+    assert "include_router(health.router" in router_code
+    assert "None" not in router_code
+
+    # Verifieer dat er geen none.py of lege domein bestanden zijn aangemaakt
+    endpoints_files = list((target / "backend" / "app" / "api" / "v1" / "endpoints").glob("*.py"))
+    endpoint_names = [f.name for f in endpoints_files]
+    assert "health.py" in endpoint_names
+    assert len(endpoint_names) == 1
+
+    # Verifieer dat models en schemas mappen __init__.py hebben
+    assert (target / "backend" / "app" / "models" / "__init__.py").is_file()
+    assert (target / "backend" / "app" / "schemas" / "__init__.py").is_file()
+
