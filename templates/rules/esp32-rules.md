@@ -1,10 +1,7 @@
 ---
+trigger: glob
+globs: "{src,include,lib}/**/*.{cpp,h,hpp}, platformio.ini"
 description: "Strikte standaarden voor ESP32 PlatformIO C++ firmware ontwikkeling."
-globs:
-  - "src/**/*"
-  - "include/**/*"
-  - "platformio.ini"
-alwaysApply: false
 ---
 
 # ESP32 C++ & PlatformIO Regels

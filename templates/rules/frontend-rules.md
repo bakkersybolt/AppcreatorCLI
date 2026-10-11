@@ -1,8 +1,7 @@
 ---
-description: "Strikte architectuur- en componentenstandaarden voor de Vue 3 Frontend."
-globs:
-  - "frontend/**/*"
-alwaysApply: false
+trigger: glob
+globs: "frontend/**/*"
+description: "Strikte architectuur- en componentenstandaarden voor de Vue 3 Frontend en Shadcn-Vue."
 ---
 
 # Vue 3 Frontend Regels
