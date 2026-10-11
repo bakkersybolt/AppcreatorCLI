@@ -1,6 +1,9 @@
 ---
 description: "Standaarden voor moderne Python CLI tools met Typer en Rich."
-globs: "{src,tests}/**/*.py"
+globs:
+  - "src/**/*"
+  - "tests/**/*"
+alwaysApply: false
 ---
 
 # Python CLI Richtlijnen

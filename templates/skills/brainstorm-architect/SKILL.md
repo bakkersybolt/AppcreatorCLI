@@ -1,60 +1,63 @@
 ---
 name: brainstorm-architect
-description: "Fungeert als Software Architect en UI/UX Designer om backend domeinen, styling en Shadcn-Vue UI componenten vast te stellen en automatisch te installeren."
+description: "Fungeert als Software Architect en UI/UX Designer om backend datamodellen, styling en Shadcn-Vue UI componenten vast te stellen en automatisch te installeren via een interactieve grill-me sessie."
 ---
 
 # Skill: brainstorm-architect
 
-**Doel:** Samen met de ontwikkelaar het project van boilerplate naar een functionele, prachtig gestylede MVP brengen. Je doorloopt de fases stap voor stap en installeert benodigde componenten via de terminal.
-
-## Werkwijze voor de AI Assistent
-
-Doorloop de volgende 4 fases sequentieel. Vraag na elke fase om feedback en bevestiging van de ontwikkelaar voordat je verdergaat.
+**Doel:** Samen met de ontwikkelaar het project van boilerplate naar een functionele, prachtig gestylede MVP brengen. Deze skill bouwt direct voort op de context die is vastgelegd via `/init-project` en doorloopt de fases stap voor stap.
 
 ---
 
-### Fase 1: Intake & Domein Modellen (Backend)
+## Werkwijze voor de AI Assistent
 
-1. Vraag de gebruiker naar:
-   - Het hoofddoel van de applicatie.
-   - Wie de eindgebruikers zijn.
-2. Doe op basis van het antwoord een concreet voorstel van de eerste 2 tot 4 domeinen/entiteiten (bijv. `Users`, `SensorReadings`, `Invoices`).
-3. Zodra de gebruiker akkoord is, genereer je direct voor het belangrijkste domein:
-   - Het SQLAlchemy model in `backend/app/models/`
-   - Het Pydantic v2 schema in `backend/app/schemas/`
-   - De FastAPI router in `backend/app/api/v1/endpoints/` en koppel deze aan de hoofdrouter.
+### Voorbereiding: Context Ophalen
+Lees **eerst** `.agents/rules/project-context.md` en `README.md`.
+- Het hoofddoel, de doelgroep en de globale features zijn hierin al gedefinieerd door de `/init-project` intake.
+- Vraag de gebruiker **niet** opnieuw naar wat de app globaal doet, maar verwijs ernaar en ga direct de diepte in.
+
+Doorloop de volgende 4 fases sequentieel. Gebruik een actieve, onderzoekende houding (in de stijl van `/grill-me`) om aannames te valideren en ontwerpbeslissingen scherp te krijgen:
+
+---
+
+### Fase 1: Datamodellen & Relaties (Backend)
+
+1. **Grill de architectuur:**
+   - Bekijk de eventueel al gegenereerde entiteiten in `backend/app/models/`.
+   - Vraag naar de specifieke attributen, datatypes en onderlinge relaties (bijv: *"Moet een `Todo` gekoppeld zijn aan een `User` via een ForeignKey?", "Zijn er statusvelden zoals `pending`/`completed`?"*).
+2. **Implementatie uitvoeren:**
+   - Werk de SQLAlchemy modellen bij of voeg nieuwe toe in `backend/app/models/`.
+   - Schrijf de bijbehorende Pydantic schema's in `backend/app/schemas/`.
+   - Koppel de endpoints in `backend/app/api/v1/endpoints/` en monteer ze in `router.py`.
 
 ---
 
 ### Fase 2: Styling & Huisstijl (Frontend)
 
-1. Vraag de gebruiker naar de gewenste visuele sfeer en stijl:
-   - Kleurenthema (bijv. "Modern slate met emerald accenten", "Donker cyber met paarse neon tinten", "Warm zand en navy").
-   - Vormgeving (strak & zakelijk met scherpe hoeken, of modern & speels met grote radius).
-2. Pas direct de CSS-variabelen aan in `frontend/src/assets/index.css`:
-   - `--primary`, `--primary-foreground`, `--radius`, `--background`, etc.
+1. **Visuele sfeer bepalen:**
+   - Vraag de gebruiker naar het gewenste kleurenpalet en uitstraling (bijv: *Modern slate met emerald accenten*, *Dark cyber met neon paars*, of *Clean minimalistisch neutraal*).
+2. **Thema toepassen:**
+   - Pas direct de CSS variabelen aan in `frontend/src/assets/index.css` (`--primary`, `--radius`, `--background`, `--card`, etc.).
 
 ---
 
-### Fase 3: Shadcn UI Componenten Bepalen & Automatisch Installeren
+### Fase 3: Shadcn-Vue Componenten Bepalen & Automatisch Installeren
 
-1. Analyseer samen met de gebruiker welke eerste pagina's en layouts er nodig zijn (bijv. `DashboardLayout.vue`, `OverviewView.vue`, `CreateItemModal.vue`).
-2. Stel een gerichte lijst samen van de benodigde **Shadcn-Vue** componenten (bijv. `button`, `card`, `input`, `dialog`, `table`, `dropdown-menu`, `badge`, `tabs`).
-3. **Voer de installatie direct uit:**
-   - Voer in de map `frontend/` het commando uit via de terminal:
-     ```bash
-     npx -y shadcn-vue@latest add button card input dialog table badge tabs --yes
-     ```
-   - Controleer of de componenten netjes in `frontend/src/components/ui/` zijn geplaatst.
+1. Analyseer samen met de gebruiker welke pagina's en layouts er nodig zijn voor de MVP (bijv. `DashboardLayout.vue`, `ItemOverview.vue`, `CreateModal.vue`).
+2. Bepaal welke **Shadcn-Vue** componenten hiervoor nodig zijn (bijv. `button`, `card`, `input`, `dialog`, `table`, `badge`, `tabs`, `dropdown-menu`).
+3. **Voer de installatie direct uit via de terminal:**
+   ```bash
+   cd frontend && npx -y shadcn-vue@latest add button card input dialog table badge tabs --yes
+   ```
+4. Controleer of de componenten netjes zijn toegevoegd in `frontend/src/components/ui/`.
 
 ---
 
-### Fase 4: Premium UI Pagina's Bouwen
+### Fase 4: Premium MVP Pagina's & Integratie Bouwen
 
-1. Bouw de daadwerkelijke Vue componenten voor de overeengekomen pagina's.
-2. Gebruik uitsluitend:
-   - De zojuist geïnstalleerde Shadcn componenten.
-   - Tailwind CSS utility classes met `cn()`.
-   - Lucide iconen uit `@lucide/vue`.
-   - Veilige TypeScript types en VueUse composables.
-3. Sluit de views aan op de Axios API service (`@/services/api`) en koppel ze aan `frontend/src/router/index.ts`.
+1. Bouw de daadwerkelijke Vue views in `frontend/src/views/` en componenten in `frontend/src/components/`.
+2. Zorg voor:
+   - Gebruik van de geïnstalleerde Shadcn componenten.
+   - Koppeling met de API via `@/services/api`.
+   - Volledige TypeScript types (geen `any`).
+   - Hot-reload testen (via `appcreator dev`).

@@ -1,6 +1,10 @@
 ---
 description: "Strikte standaarden voor ESP32 PlatformIO C++ firmware ontwikkeling."
-globs: "{src,include,lib}/**/*.{cpp,h,hpp}"
+globs:
+  - "src/**/*"
+  - "include/**/*"
+  - "platformio.ini"
+alwaysApply: false
 ---
 
 # ESP32 C++ & PlatformIO Regels

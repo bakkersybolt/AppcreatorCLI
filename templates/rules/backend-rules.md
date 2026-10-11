@@ -1,6 +1,8 @@
 ---
 description: "Strikte architectuur- en codeerstandaarden voor de Python / FastAPI backend."
-globs: "backend/**/*"
+globs:
+  - "backend/**/*"
+alwaysApply: false
 ---
 
 # Python & FastAPI Backend Regels
