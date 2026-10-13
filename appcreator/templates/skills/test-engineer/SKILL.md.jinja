@@ -1,0 +1,173 @@
+---
+name: test-engineer
+description: "Zet de testomgeving op en schrijft en draait unit- en integratietests voor dit project. Gebruik wanneer de gebruiker tests wil toevoegen, een bug wil vastleggen in een test, of wanneer tests falen."
+---
+
+# Test-engineer
+
+Werk in deze volgorde: controleer of de testomgeving bestaat, schrijf de test, draai hem en meld het resultaat met de uitvoer. Een test die je niet hebt gedraaid is niet af.
+
+Test per functie het normale pad, de randgevallen en de foutsituaties. Leg een bug eerst vast in een falende test en los hem daarna op.
+{%- if backend %}
+
+## Backend (Pytest)
+
+### Eenmalige setup
+
+Het gegenereerde project heeft nog geen testconfiguratie. Maak die aan als `backend/tests/` ontbreekt.
+
+`backend/pytest.ini`:
+
+```ini
+[pytest]
+asyncio_mode = auto
+testpaths = tests
+```
+
+`backend/tests/conftest.py`:
+
+```python
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+
+
+@pytest.fixture
+async def client():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+```
+{%- if database != "none" %}
+
+Zodra endpoints de database gebruiken, mogen tests de ontwikkeldatabase niet raken. Vervang `get_db` in de fixture door een sessie op een SQLite-database in het geheugen. De modellen zijn al geregistreerd doordat `app.main` ze importeert:
+
+```python
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
+
+from app.db.base import Base
+from app.db.session import get_db
+
+
+@pytest.fixture
+async def client():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", poolclass=StaticPool)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def override_get_db():
+        async with session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+    app.dependency_overrides.clear()
+    await engine.dispose()
+```
+{%- endif %}
+
+### Een test schrijven
+
+```python
+async def test_health_check(client):
+    response = await client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+```
+
+Controleer bij endpoints ook de foutcodes: 404 voor een onbekend id en 422 voor ongeldige invoer.
+
+### Draaien
+
+```bash
+cd backend && .venv/bin/pytest -v
+```
+{%- endif %}
+{%- if frontend %}
+
+## Frontend (Vitest)
+
+### Eenmalige setup
+
+Vitest, Vue Test Utils en jsdom staan in `package.json`, maar er is nog geen configuratie. Maak `frontend/vitest.config.ts` aan als die ontbreekt:
+
+```ts
+import { fileURLToPath } from 'node:url'
+import { defineConfig, mergeConfig } from 'vitest/config'
+import viteConfig from './vite.config'
+
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: 'jsdom',
+      root: fileURLToPath(new URL('./', import.meta.url)),
+    },
+  }),
+)
+```
+
+### Een test schrijven
+
+Zet tests naast de code in een map `__tests__`, bijvoorbeeld `frontend/src/views/__tests__/HomeView.spec.ts`. Test wat de gebruiker ziet en doet: wat er wordt getoond, wat er gebeurt na een klik of invoer, en de validatie van formulieren.
+
+Vervang de API door een mock, zodat tests zonder backend slagen:
+
+```ts
+import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import HomeView from '../HomeView.vue'
+
+vi.mock('@/services/api', () => ({
+  api: { get: vi.fn().mockResolvedValue({ data: { status: 'healthy' } }) },
+}))
+
+describe('HomeView', () => {
+  it('toont dat de backend verbonden is', async () => {
+    const wrapper = mount(HomeView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Verbonden')
+  })
+})
+```
+
+### Draaien
+
+```bash
+cd frontend && npm run test
+```
+{%- endif %}
+{%- if cli %}
+
+## CLI (Pytest)
+
+De testomgeving bestaat al: `tests/test_cli.py` gebruikt `typer.testing.CliRunner`.
+
+```python
+from typer.testing import CliRunner
+
+from {{ package_name }}.main import app
+
+runner = CliRunner()
+
+
+def test_hello_met_naam():
+    result = runner.invoke(app, ["hello", "Ada"])
+
+    assert result.exit_code == 0
+    assert "Hallo Ada!" in result.stdout
+```
+
+Controleer bij foutsituaties ook dat `exit_code` ongelijk is aan 0. Test logica die buiten de commandofuncties staat rechtstreeks, zonder `CliRunner`.
+
+### Draaien
+
+```bash
+.venv/bin/pytest -v
+```
+{%- endif %}

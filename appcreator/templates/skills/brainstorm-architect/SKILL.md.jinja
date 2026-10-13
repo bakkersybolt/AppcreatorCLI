@@ -1,0 +1,62 @@
+---
+name: brainstorm-architect
+description: "Ontwerpt samen met de gebruiker het datamodel en, bij een frontend, de schermen, en bouwt daarna de eerste versie. Gebruik na /init-project, of wanneer de gebruiker entiteiten, relaties of schermen wil uitwerken voordat er code wordt geschreven."
+---
+
+# Brainstorm-architect
+
+De skill heeft twee delen. Schrijf in deel 1 geen code: het doel is een ontwerp waar de gebruiker akkoord op geeft. Bouw pas in deel 2.
+
+## Voorbereiding
+
+Lees `{{ context_file }}` en `README.md`. Staat het doel van de applicatie daar al, vraag er dan niet opnieuw naar. Ontbreekt het, start dan eerst `/init-project`.
+
+Bekijk de bestaande modellen in `backend/app/models/`: die zijn gegenereerd als voorbeeld en hebben alleen `name` en `description`.
+
+## Deel 1: Ontwerpen
+
+Stel de vragen één voor één. Doe bij elke vraag een concreet voorstel op basis van het doel, zodat de gebruiker alleen hoeft te corrigeren. Loop deze onderwerpen langs:
+
+1. **Entiteiten en velden:** welke entiteiten zijn er, met welke velden en types? Welke velden zijn verplicht of uniek?
+2. **Relaties:** wat hoort bij wat (één-op-veel, veel-op-veel)? Wat gebeurt er met gekoppelde records bij verwijderen?
+3. **Statussen en regels:** zijn er statusvelden of overgangen die niet mogen?
+4. **Toegang:** moet er worden ingelogd, en mag iedereen alles zien en wijzigen?
+{%- if frontend %}
+5. **Schermen:** welke pagina's heeft de eerste versie, en wat kan de gebruiker op elke pagina doen?
+6. **Uitstraling:** welk kleurenpalet en welke sfeer? Bijvoorbeeld neutraal en strak, of donker met een accentkleur.
+{%- endif %}
+{%- if assistant == "antigravity" %}
+
+Tip voor de gebruiker: met `/grill-me` stelt de assistent deze vragen als een interview.
+{%- endif %}
+
+Sluit af met een samenvatting: een tabel met entiteiten, velden en relaties{% if frontend %}, en een lijst van schermen{% endif %}. Leg die na akkoord vast onder een kop "Datamodel" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}. Vraag daarna of je mag gaan bouwen.
+
+## Deel 2: Bouwen
+
+Bouw per entiteit de hele keten af voordat je aan de volgende begint.
+
+### Backend
+
+1. Werk het model bij in `backend/app/models/` en importeer nieuwe modellen in `models/__init__.py`.
+2. Schrijf de schema's (`Create`, `Update`, `Response`) in `backend/app/schemas/`.
+3. Vervang het voorbeeld-endpoint met de lijst in het geheugen door echte queries, en registreer nieuwe routers in `backend/app/api/v1/router.py`. De skill `python-fastapi` beschrijft het patroon.
+4. Controleer het resultaat in http://localhost:8000/docs of met een test.
+
+{% if database != "none" -%}
+Bestaande tabellen worden door `create_all` niet aangepast. Vraag bij een gewijzigd model of de ontwikkeldatabase opnieuw mag worden aangemaakt, of gebruik migraties.
+{%- else -%}
+Dit project is gegenereerd zonder database: `get_db` levert `None`. Bespreek met de gebruiker welke database er komt en richt die in voordat je queries schrijft.
+{%- endif %}
+{%- if frontend %}
+
+### Frontend
+
+1. Pas het thema aan via de CSS-variabelen in `frontend/src/assets/index.css` (`--primary`, `--background`, `--radius`).
+2. Installeer de benodigde Shadcn-Vue-componenten. De skill `vue-shadcn` beschrijft hoe.
+3. Genereer de API-types met `cd frontend && npm run generate:types` terwijl de backend draait.
+4. Bouw de views in `frontend/src/views/`, voeg ze toe aan `frontend/src/router/index.ts` en koppel ze aan de API via `@/services/api`.
+5. Controleer met `cd frontend && npm run lint && npm run build`.
+{%- endif %}
+
+Meld na elke entiteit wat er werkt en wat nog openstaat.

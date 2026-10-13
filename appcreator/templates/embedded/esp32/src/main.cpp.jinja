@@ -3,8 +3,13 @@
 
 #define LED_PIN 2
 
-unsigned long lastPrintTime = 0;
-const unsigned long printInterval = 5000; // Elke 5 seconden heartbeat
+const unsigned long HEARTBEAT_INTERVAL_MS = 5000; // Elke 5 seconden heartbeat
+const unsigned long BLINK_INTERVAL_MS = 1000;     // Elke seconde een korte LED-puls
+const unsigned long BLINK_DURATION_MS = 50;
+
+unsigned long lastHeartbeat = 0;
+unsigned long lastBlink = 0;
+bool ledOn = false;
 
 void setup() {
     Serial.begin(115200);
@@ -21,28 +26,29 @@ void setup() {
 }
 
 void loop() {
-    unsigned long currentMillis = millis();
+    unsigned long now = millis();
 
-    // Knipper LED als activiteitsindicator
-    digitalWrite(LED_PIN, HIGH);
-    delay(50);
-    digitalWrite(LED_PIN, LOW);
+    // Knipper de LED als activiteitsindicator, zonder de loop te blokkeren
+    if (!ledOn && now - lastBlink >= BLINK_INTERVAL_MS) {
+        lastBlink = now;
+        ledOn = true;
+        digitalWrite(LED_PIN, HIGH);
+    } else if (ledOn && now - lastBlink >= BLINK_DURATION_MS) {
+        ledOn = false;
+        digitalWrite(LED_PIN, LOW);
+    }
 
     // Periodieke heartbeat op de Serial monitor
-    if (currentMillis - lastPrintTime >= printInterval) {
-        lastPrintTime = currentMillis;
+    if (now - lastHeartbeat >= HEARTBEAT_INTERVAL_MS) {
+        lastHeartbeat = now;
 
         JsonDocument doc;
         doc["app"] = "{{ app_naam }}";
-        doc["uptime_ms"] = currentMillis;
+        doc["uptime_ms"] = now;
         doc["status"] = "online";
         doc["free_heap"] = ESP.getFreeHeap();
 
-        String output;
-        serializeJson(doc, output);
-        Serial.print("❤️ Heartbeat: ");
-        Serial.println(output);
+        serializeJson(doc, Serial);
+        Serial.println();
     }
-
-    delay(950);
 }

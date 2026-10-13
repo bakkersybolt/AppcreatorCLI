@@ -1,39 +1,29 @@
----
-trigger: glob
-globs: "frontend/**/*"
-description: "Strikte architectuur- en componentenstandaarden voor de Vue 3 Frontend en Shadcn-Vue."
----
+# Vue 3 frontend
 
-# Vue 3 Frontend Regels
+Schrijf componenten met de Composition API en `<script setup lang="ts">`.
 
-## UI Framework & Componenten (Shadcn-Vue)
+## Componenten (Shadcn-Vue)
 
-- Wij gebruiken **shadcn-vue** voor alle herbruikbare UI componenten.
-- Ga NIET zelf standaard knoppen, modals, of formulieren bouwen met losse Tailwind classes als daar een Shadcn component voor bestaat.
-- Als je een component nodig hebt dat nog niet in `src/components/ui/` staat, installeer dit via de terminal met: `npx shadcn-vue@latest add [component-naam]`.
-- Gebruik altijd de `cn()` utility uit `@/lib/utils` voor het samenvoegen van dynamische Tailwind classes.
+- Gebruik Shadcn-Vue-componenten uit `@/components/ui/` voor knoppen, dialogs, formulieren en tabellen. Bouw die niet zelf met losse Tailwind-classes: dan lopen stijl en toegankelijkheid uiteen.
+- Staat een component nog niet in `frontend/src/components/ui/`, installeer het dan eerst. De skill `vue-shadcn` beschrijft hoe.
+- Voeg dynamische classes samen met `cn()` uit `@/lib/utils`.
+- Importeer iconen uit `@lucide/vue`, bijvoorbeeld `import { Check } from '@lucide/vue'`.
 
-## Reactivity & Composables (VueUse)
+## TypeScript
 
-- Maak standaard gebruik van **@vueuse/core** voor veelvoorkomende logica (bijv. `useWindowSize`, `onClickOutside`, `useStorage`, `useDebounceFn`).
-- Schrijf GEEN handmatige window listeners als er een VueUse alternatief is.
+- Gebruik geen `any`; de linter keurt het af. Gebruik bij onbekende data `unknown` en valideer die, of definieer een interface.
+- API-types komen uit `frontend/src/types/schema.d.ts`. Dat bestand wordt gegenereerd met `npm run generate:types`; bewerk het niet met de hand. Exporteer domeintypes via `frontend/src/types/index.ts`.
 
-## TypeScript & Type Safety (STRIKT)
+## Data en state
 
-- Het gebruik van het type `any` is **STRIKT VERBODEN**. Gebruik bij onbekende data `unknown` en valideer dit, of definieer de exacte TypeScript interface.
-- De frontend types sluiten aan op het OpenAPI schema via `src/types/schema.d.ts` (genereer via `npm run generate:types`).
+- Roep de API aan via de Axios-instance in `frontend/src/services/api.ts`, zodat basis-URL en authenticatie op één plek staan.
+- Gedeelde state hoort in Pinia-stores in `frontend/src/stores/`. State van één component blijft in die component.
+- Gebruik `@vueuse/core` voor browserlogica zoals `useStorage`, `useDebounceFn` en `onClickOutside` in plaats van eigen event listeners.
 
-## API Communicatie & State
+## Formulieren
 
-- API communicatie verloopt via de centrale Axios instance in `src/services/api.ts`.
-- Globale applicatiestate wordt beheerd in **Pinia** stores (`src/stores/`).
+- Bouw formulieren met vee-validate en een Zod-schema.
 
-## Formulieren & Iconen
+## Suppressies
 
-- Formulieren worden gebouwd met **vee-validate** in combinatie met **Zod** schema validatie.
-- Iconen worden uitsluitend geïmporteerd uit **@lucide/vue** (bijv. `import { Check, AlertCircle } from 'lucide-vue-next'`).
-
-# Kwaliteitsgarantie (No Lazy Workarounds)
-
-1. Gebruik NOOIT quick hacks of linter suppressions (`// eslint-disable`, `/* @ts-ignore */`, `/* @vue-ignore */`).
-2. Los fouten altijd structureel op met correcte types en idiomatische Vue 3 Composition API code.
+- Gebruik `eslint-disable`, `@ts-ignore` of `@vue-ignore` alleen met een toelichting op dezelfde regel waarom het nodig is. Los de oorzaak op waar dat kan.

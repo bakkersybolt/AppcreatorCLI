@@ -1,23 +1,21 @@
----
-trigger: glob
-globs: "{src,include,lib}/**/*.{cpp,h,hpp}, platformio.ini"
-description: "Strikte standaarden voor ESP32 PlatformIO C++ firmware ontwikkeling."
----
+# ESP32 C++ & PlatformIO
 
-# ESP32 C++ & PlatformIO Regels
+## Niet blokkeren
 
-## Geheugenbeheer & Stabiliteit
+- Gebruik geen `delay()` van meer dan een paar milliseconden in `loop()`: tijdens een delay worden wifi, sensoren en de watchdog niet bediend. Gebruik timers op basis van `millis()` of FreeRTOS-taken met `vTaskDelay()`.
+- Geef wachtlussen een maximale duur, zodat de watchdog niet afgaat.
 
-- Vermijd onnodige dynamische geheugenallocaties (`malloc`, `new`, grote dynamische `String` operaties in loops). Gebruik `char[]` of vaste buffers waar mogelijk om heap fragmentation te voorkomen.
-- Controleer periodiek `ESP.getFreeHeap()` bij geheugen-intensieve taken zoals JSON parsing of WiFi communicatie.
-- Gebruik voor JSON altijd **ArduinoJson v7** met `JsonDocument`.
+## Geheugen
 
-## Non-Blocking Architecture
+- Vermijd dynamische allocatie in lussen (`new`, `malloc`, het aaneenrijgen van `String`). Dat fragmenteert de heap en leidt na uren tot crashes. Gebruik vaste buffers of `char[]`.
+- Gebruik ArduinoJson v7 met `JsonDocument`.
+- Log `ESP.getFreeHeap()` bij geheugenintensief werk zoals JSON of wifi.
 
-- Gebruik NOOIT lange `delay()` aanroepen in de `loop()`. Gebruik `millis()` timers of FreeRTOS tasks (`vTaskDelay()`).
-- Zorg dat de watchdog timer nooit getriggerd wordt door blokkerende lussen.
+## Geheimen
 
-## Serial & Logging
+- Zet wifi-wachtwoorden en API-sleutels niet in de broncode. Gebruik `include/secrets.h`, dat in `.gitignore` staat.
 
-- Gebruik standaard baudrate **115200**.
-- Gebruik gestructureerde log output of JSON payloads voor seriële telemetrie.
+## Serieel
+
+- De baudrate is 115200, gelijk aan `monitor_speed` in `platformio.ini`.
+- Schrijf telemetrie als JSON op één regel, zodat een script die kan inlezen.

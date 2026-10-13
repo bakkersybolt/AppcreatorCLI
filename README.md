@@ -1,8 +1,8 @@
 # AppCreator CLI 🚀
 
-> **AI-Ready Project Scaffolding CLI** voor moderne Fullstack, Backend, Embedded en CLI applicaties met ingebouwde **Google Antigravity** skills en regels.
+> **AI-Ready Project Scaffolding CLI** voor moderne Fullstack, Backend, Embedded en CLI applicaties met ingebouwde regels en skills voor **Google Antigravity** en **Claude Code**.
 
-AppCreator stelt je in staat om via een interactieve terminal wizard binnen enkele seconden een complete, werkende en modulaire mappenstructuur op te zetten. Elk gegenereerd project wordt direct uitgerust met `.agents/rules` en `.agents/skills`, inclusief een interactieve architect-workflow om datamodellen en Shadcn UI-componenten direct met AI te bouwen.
+AppCreator stelt je in staat om via een interactieve terminal wizard binnen enkele seconden een complete, werkende en modulaire mappenstructuur op te zetten. Elk gegenereerd project krijgt regels en skills voor de AI-assistent die je in de wizard kiest: Google Antigravity (`.agents/`), Claude Code (`CLAUDE.md` + `.claude/`) of beide.
 
 ---
 
@@ -10,13 +10,14 @@ AppCreator stelt je in staat om via een interactieve terminal wizard binnen enke
 
 - **🎯 Categorie-gestuurde Wizard:** Kies uit 4 kernarchetypes met alleen de relevante vervolgvragen.
 - **🧱 Volledig Modulaire Lagen:** Geen starre sjablonen, maar herbruikbare backend, frontend, database en AI-lagen samengesteld met Jinja2.
-- **🤖 Geïntegreerde AI-Skills (`.agents/`):**
-  - **`init-project`:** Universele startskill die de lokale omgeving controleert en de ontwikkelaar aan de hand neemt.
-  - **`brainstorm-architect`:** Interactieve software architect & UI/UX designer die domeinen vastlegt en automatisch de juiste **Shadcn-Vue** componenten installeert via de terminal (`npx shadcn-vue add ...`).
-  - **`test-engineer`:** Geautomatiseerde Pytest & Vitest testsuites en mocks.
-  - **`code-reviewer`:** Kwaliteits- en securitychecks zonder compromissen of anti-patterns.
-  - **`database-architect`:** Relationeel schema-ontwerp en Alembic async migraties.
-  - **`docker-devops`:** Multi-stage Dockerfiles en Docker Compose orchestration.
+- **🤖 Geïntegreerde AI-Skills:** alleen de skills die bij het projecttype passen worden aangeboden.
+  - **`init-project`:** startskill die de lokale omgeving controleert en doel en scope vastlegt.
+  - **`brainstorm-architect`:** ontwerpt met jou het datamodel en de schermen en bouwt daarna de eerste versie (web en backend).
+  - **`test-engineer`:** zet de testomgeving op en schrijft tests met Pytest en Vitest.
+  - **`code-reviewer`:** beoordeelt wijzigingen op fouten, security, types en architectuur.
+  - **`database-architect`:** schema-ontwerp en Alembic-migraties (bij een database).
+  - **`docker-devops`:** Docker Compose, debuggen van containers en productie-images.
+  - **Stack-skills** (`python-fastapi`, `vue-shadcn`, `esp32-development`) worden automatisch toegevoegd.
 - **⚡ Slimme Tooling & Snelheid:**
   - Automatische detectie van `uv` voor razendsnelle Python installaties.
   - Detectie van `npm`/`pnpm` voor frontend installaties.
@@ -86,24 +87,30 @@ appcreator info
 
 ---
 
-## 🧠 Aan de Slag met Google Antigravity
+## 🧠 Aan de Slag met je AI-assistent
+
+In de wizard kies je voor welke assistent de regels en skills worden gegenereerd:
+
+| | Google Antigravity | Claude Code |
+| :--- | :--- | :--- |
+| Projectcontext (altijd actief) | `.agents/rules/project-context.md` | `CLAUDE.md` |
+| Regels per map | `.agents/rules/*.md` (`trigger: glob`) | `.claude/rules/*.md` (`paths:`) |
+| Skills | `.agents/skills/<naam>/SKILL.md` | `.claude/skills/<naam>/SKILL.md` |
 
 Zodra je project is aangemaakt:
 
-1. Navigeer naar de projectmap:
+1. Navigeer naar de projectmap en open die in je assistent:
    ```bash
    cd MijnApplicatie
+   antigravity .   # of: claude
    ```
-2. Open de map in **Google Antigravity**:
-   ```bash
-   antigravity .
-   ```
-3. Type in de Antigravity chat:
+2. Type in de chat:
    ```text
    /init-project
    ```
-   De AI assistent verifieert direct je omgeving (Python venv, Node dependencies, Git) en start automatisch de bijpassende vervolgstap:
-   - Voor Web/Fullstack: De **`brainstorm-architect`** sessie start direct, vraagt naar je gewenste schermen en kleurstijl, en installeert zelfstandig de benodigde Shadcn-Vue componenten via `npx shadcn-vue@latest add [component]`!
+   De assistent controleert je omgeving, stelt drie intakevragen en legt het doel vast in de README en de projectcontext. Bij een web- of backendproject kun je daarna door met `/brainstorm-architect`.
+
+De inhoud van regels en skills komt uit één bron in `appcreator/templates/rules/` en `appcreator/templates/skills/`. De frontmatter per assistent staat in `appcreator/core/assistants.py`.
 
 ---
 
@@ -126,6 +133,8 @@ AppcreatorCLI/
 │   ├── core/
 │   │   ├── generator.py       # Modulaire Jinja2 rendering, lagen-assembler & docker-compose
 │   │   ├── naming.py          # Slug, Python-packagenaam en validatie van de applicatienaam
+│   │   ├── assistants.py      # AI-assistenten (Antigravity, Claude Code) en rule-frontmatter
+│   │   ├── skills.py          # Skillcatalogus: welke skill past bij welk projecttype
 │   │   ├── detector.py        # Systeemdetectie (uv, npm, pnpm, git, docker)
 │   │   ├── manifest.py        # .appcreator.json beheer
 │   │   ├── installer.py       # Automatische dependency installatie & git init
@@ -136,8 +145,8 @@ AppcreatorCLI/
 │       ├── frontends/vue3/    # Werkende Vue 3 + Tailwind + Shadcn frontend
 │       ├── embedded/esp32/    # Werkende PlatformIO ESP32 firmware
 │       ├── cli/python-typer/  # Werkende Python CLI boilerplate
-│       ├── rules/             # Centrale .agents/rules regels
-│       └── skills/            # Centrale .agents/skills catalogus (9 skills)
+│       ├── rules/             # Regelteksten (zonder frontmatter, die komt per assistent)
+│       └── skills/            # Skillcatalogus (9 skills, SKILL.md of SKILL.md.jinja)
 └── tests/
     ├── test_cli.py            # Tests voor de CLI commando's
     └── test_generation.py     # End-to-end tests voor alle projecttypen

@@ -414,3 +414,158 @@ def test_python_setup_installs_pyproject_project_editable(tmp_dir, monkeypatch):
     assert len(install_calls) == 1
     assert install_calls[0][install_calls[0].index("-e") + 1] == ".[dev]"
 
+
+ALLE_OPTIONELE_SKILLS = ["brainstorm-architect", "test-engineer", "code-reviewer", "database-architect", "docker-devops"]
+FULLSTACK = {"backend": "fastapi", "frontend": "vue3", "database": "postgres", "entiteiten": ["Item", "User"]}
+
+
+def _alle_tekst(target: Path) -> str:
+    """Alle gegenereerde tekst buiten de meegeleverde naslag, voor controles op verboden termen."""
+    delen = []
+    for pad in target.rglob("*"):
+        if pad.is_file() and pad.suffix in {".md", ".vue", ".json", ".py", ".sh", ".ts", ".cpp", ".toml", ".yml"}:
+            delen.append(pad.read_text(encoding="utf-8"))
+    return "\n".join(delen)
+
+
+def _frontmatter(skill_file: Path) -> dict:
+    regels = skill_file.read_text(encoding="utf-8").splitlines()
+    assert regels[0] == "---", f"{skill_file} mist frontmatter"
+    einde = regels.index("---", 1)
+    velden = {}
+    for regel in regels[1:einde]:
+        sleutel, _, waarde = regel.partition(":")
+        velden[sleutel.strip()] = waarde.strip().strip('"')
+    return velden
+
+
+def test_generate_for_claude_only(tmp_dir):
+    target = tmp_dir / "ClaudeApp"
+    assemble_project("ClaudeApp", "fullstack", FULLSTACK, ALLE_OPTIONELE_SKILLS, target, assistants=["claude"])
+
+    assert (target / "CLAUDE.md").is_file()
+    assert not (target / "CLAUDE.md").read_text().startswith("---")
+    assert (target / ".claude" / "skills" / "init-project" / "SKILL.md").is_file()
+    assert (target / ".claude" / "skills" / "python-fastapi" / "references" / "auth-jwt.md").is_file()
+    assert not (target / ".agents").exists()
+
+    backend_rule = (target / ".claude" / "rules" / "backend-rules.md").read_text()
+    assert backend_rule.startswith('---\npaths:\n  - "backend/**/*"\n---\n')
+    assert "trigger:" not in backend_rule
+
+    tekst = _alle_tekst(target)
+    for verboden in ["Antigravity", ".agents/", "/grill-me"]:
+        assert verboden not in tekst, f"'{verboden}' hoort niet in een Claude-project"
+
+    assert load_manifest(target)["assistants"] == ["claude"]
+
+
+def test_generate_for_antigravity_only_is_default(tmp_dir):
+    target = tmp_dir / "AntiApp"
+    assemble_project("AntiApp", "fullstack", FULLSTACK, ALLE_OPTIONELE_SKILLS, target)
+
+    assert not (target / "CLAUDE.md").exists()
+    assert not (target / ".claude").exists()
+
+    context = (target / ".agents" / "rules" / "project-context.md").read_text()
+    assert context.startswith("---\ntrigger: always_on\n")
+    frontend_rule = (target / ".agents" / "rules" / "frontend-rules.md").read_text()
+    assert frontend_rule.startswith('---\ntrigger: glob\nglobs: "frontend/**/*"\n')
+
+    init_skill = (target / ".agents" / "skills" / "init-project" / "SKILL.md").read_text()
+    assert "/grill-me" in init_skill
+    assert "Claude" not in _alle_tekst(target)
+    assert load_manifest(target)["assistants"] == ["antigravity"]
+
+
+def test_generate_for_both_assistants(tmp_dir):
+    target = tmp_dir / "BeideApp"
+    assemble_project("BeideApp", "fullstack", FULLSTACK, ["brainstorm-architect"], target, assistants=["claude", "antigravity"])
+
+    assert (target / "CLAUDE.md").is_file()
+    assert (target / ".agents" / "rules" / "project-context.md").is_file()
+
+    for skills_dir in [".agents/skills", ".claude/skills"]:
+        init_skill = (target / skills_dir / "init-project" / "SKILL.md").read_text()
+        # Het doel moet in beide contextbestanden terechtkomen, anders lopen ze uiteen
+        assert "`.agents/rules/project-context.md` en `CLAUDE.md`" in init_skill
+
+    assert "/grill-me" in (target / ".agents" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
+    assert "/grill-me" not in (target / ".claude" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
+    assert load_manifest(target)["assistants"] == ["antigravity", "claude"]
+
+
+@pytest.mark.parametrize(
+    "category, stack, skills",
+    [
+        ("fullstack", FULLSTACK, ALLE_OPTIONELE_SKILLS),
+        ("backend", {"backend": "fastapi", "database": "none", "entiteiten": []}, ["brainstorm-architect", "test-engineer", "code-reviewer", "docker-devops"]),
+        ("embedded", {"hardware": "esp32"}, ["code-reviewer"]),
+        ("cli", {"cli": "python-typer"}, ["test-engineer", "code-reviewer"]),
+    ],
+)
+def test_generated_skills_are_wellformed(tmp_dir, category, stack, skills):
+    import re
+
+    target = tmp_dir / "SkillApp"
+    assemble_project("SkillApp", category, stack, skills, target, assistants=["antigravity", "claude"])
+
+    skill_files = list(target.glob(".agents/skills/*/SKILL.md")) + list(target.glob(".claude/skills/*/SKILL.md"))
+    assert len(skill_files) >= 2 * (1 + len(skills))
+
+    for skill_file in skill_files:
+        velden = _frontmatter(skill_file)
+        assert velden["name"] == skill_file.parent.name
+        assert "Gebruik" in velden["description"], f"{skill_file}: description zegt niet wanneer de skill geldt"
+
+        tekst = skill_file.read_text(encoding="utf-8")
+        assert "{%" not in tekst and "{{" not in tekst
+        for link in re.findall(r"\]\(([^)#]+)\)", tekst):
+            if not link.startswith("http"):
+                assert (skill_file.parent / link).is_file(), f"{skill_file}: dode link naar {link}"
+
+    # Het manifest bevat alle geïnstalleerde skills, ook de stack-skills
+    geinstalleerd = sorted(p.parent.name for p in target.glob(".claude/skills/*/SKILL.md"))
+    assert sorted(load_manifest(target)["skills"]) == geinstalleerd
+
+
+def test_embedded_project_has_no_web_content_in_skills(tmp_dir):
+    target = tmp_dir / "EspApp"
+    assemble_project("EspApp", "embedded", {"hardware": "esp32"}, ["code-reviewer"], target, assistants=["claude"])
+
+    skills_tekst = "\n".join(p.read_text() for p in (target / ".claude").rglob("*.md")) + (target / "CLAUDE.md").read_text()
+    for web_term in ["Shadcn", "FastAPI", "frontend", "backend/"]:
+        assert web_term not in skills_tekst, f"'{web_term}' hoort niet in een ESP32-project"
+    assert "delay(" not in (target / "src" / "main.cpp").read_text().split("void loop()")[1]
+
+
+def test_optional_skills_are_filtered_per_category():
+    from appcreator.core.skills import optionele_skills_voor, skill_past_bij_project
+
+    def namen(category, database=None):
+        return [s["name"] for s in optionele_skills_voor(category, database)]
+
+    assert namen("embedded") == ["code-reviewer"]
+    assert namen("cli") == ["test-engineer", "code-reviewer"]
+    assert "database-architect" in namen("fullstack", "postgres")
+    assert "database-architect" not in namen("backend", "none")
+    assert "brainstorm-architect" in namen("backend", "none")
+
+    assert skill_past_bij_project("init-project", "embedded", {"hardware": "esp32"})
+    assert skill_past_bij_project("esp32-development", "embedded", {"hardware": "esp32"})
+    assert not skill_past_bij_project("vue-shadcn", "backend", {"backend": "fastapi"})
+    assert not skill_past_bij_project("brainstorm-architect", "cli", {"cli": "python-typer"})
+
+
+def test_templates_follow_their_own_rules(tmp_dir):
+    target = tmp_dir / "RegelApp"
+    assemble_project("RegelApp", "fullstack", FULLSTACK, [], target, assistants=["claude"])
+
+    assert "any" not in (target / "frontend" / "src" / "views" / "HomeView.vue").read_text().split("</script>")[0].replace("company", "")
+    assert (target / "frontend" / "src" / "lib" / "utils.ts").is_file()
+    assert "lucide-vue-next" not in _alle_tekst(target)
+
+    gitignore = (target / ".gitignore").read_text().splitlines()
+    assert "lib/" not in gitignore
+    assert "include/secrets.h" in gitignore
+

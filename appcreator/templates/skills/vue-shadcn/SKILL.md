@@ -1,47 +1,48 @@
 ---
 name: vue-shadcn
-description: "Praktische gids en best practices voor Vue 3, Shadcn-Vue componenten, Pinia state en Tailwind CSS."
+description: "Werkwijze voor de Vue 3-frontend met Shadcn-Vue: componenten installeren en gebruiken, formulieren met validatie en het thema aanpassen. Gebruik bij elk werk aan schermen of componenten in frontend/src."
 ---
 
-# Skill: vue-shadcn
+# Vue-shadcn
 
-**Doel:** Praktische ondersteuning bieden bij het bouwen van moderne Vue 3 web interfaces met Shadcn-Vue en Tailwind CSS.
+## Componenten installeren
 
-## Shadcn-Vue Componenten Toevoegen
+Shadcn-Vue-componenten worden als broncode in het project gezet, in `frontend/src/components/ui/`. Kijk eerst of het component daar al staat.
 
-Om componenten toe te voegen aan het project:
 ```bash
-# Specifiek component toevoegen
+cd frontend
+
+# Eén component
 npx shadcn-vue@latest add button
 
-# Meerdere componenten tegelijk installeren
-npx shadcn-vue@latest add button card dialog dropdown-menu input table tabs badge
+# Meerdere tegelijk
+npx shadcn-vue@latest add card dialog input table
 ```
 
-## Aanbevolen Componentstructuur
+De instellingen staan in `frontend/components.json`. De geïnstalleerde bestanden zijn van het project: pas ze aan als het ontwerp daarom vraagt.
 
-Importeer geïnstalleerde Shadcn componenten altijd vanuit `@/components/ui/[component]`:
+## Een component gebruiken
 
 ```vue
 <script setup lang="ts">
+import { Plus } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus } from 'lucide-vue-next'
 
 const emit = defineEmits<{
-  (e: 'create'): void
+  create: []
 }>()
 </script>
 
 <template>
-  <Card class="hover:shadow-md transition-shadow">
+  <Card>
     <CardHeader>
       <CardTitle>Overzicht</CardTitle>
       <CardDescription>Beheer je actieve records</CardDescription>
     </CardHeader>
     <CardContent>
-      <Button @click="emit('create')" class="gap-2">
-        <Plus class="w-4 h-4" />
+      <Button class="gap-2" @click="emit('create')">
+        <Plus class="h-4 w-4" />
         Nieuw toevoegen
       </Button>
     </CardContent>
@@ -49,21 +50,44 @@ const emit = defineEmits<{
 </template>
 ```
 
-## Formulier Validatie (Vee-Validate + Zod)
-Combineer Shadcn form componenten met Zod schema's:
-```typescript
+- Importeer componenten uit `@/components/ui/<component>` en iconen uit `@lucide/vue`.
+- Voeg voorwaardelijke classes samen met `cn()` uit `@/lib/utils`: `:class="cn('rounded-lg border', isActive && 'border-primary')"`.
+
+## Formulieren
+
+Installeer eerst de formuliercomponenten (`npx shadcn-vue@latest add form input`). Leg de validatie vast in een Zod-schema:
+
+```ts
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import * as z from 'zod'
 
 const formSchema = toTypedSchema(
   z.object({
-    name: z.string().min(2, 'Minimaal 2 karakters'),
+    name: z.string().min(2, 'Minimaal 2 tekens'),
     email: z.string().email('Ongeldig e-mailadres'),
-  })
+  }),
 )
 
-const form = useForm({
-  validationSchema: formSchema,
+const form = useForm({ validationSchema: formSchema })
+
+const onSubmit = form.handleSubmit(async (values) => {
+  // values is getypeerd volgens het schema
 })
+```
+
+Toon fouten van de API ook in het formulier, niet alleen de validatie in de browser.
+
+## Thema
+
+De kleuren zijn CSS-variabelen in `frontend/src/assets/index.css` (`--primary`, `--background`, `--card`, `--radius`). Pas het thema daar aan en gebruik in componenten de bijbehorende classes zoals `bg-primary` en `text-muted-foreground`. Vaste kleuren zoals `bg-blue-500` volgen het thema en de donkere modus niet.
+
+## Data ophalen
+
+Haal data op via `api` uit `@/services/api` en gebruik de gegenereerde types uit `frontend/src/types/`. Toon bij elke aanroep een laadstatus en een foutmelding.
+
+## Controleren
+
+```bash
+cd frontend && npm run lint && npm run build
 ```

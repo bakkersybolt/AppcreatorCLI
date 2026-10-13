@@ -1,18 +1,19 @@
----
-trigger: glob
-globs: "{src,tests}/**/*.py"
-description: "Standaarden voor moderne Python CLI tools met Typer en Rich."
----
+# Python CLI met Typer en Rich
 
-# Python CLI Richtlijnen
+## Structuur
 
-## Typer & Rich
+- De broncode staat in `src/<package>/`, de tests in `tests/`. Commando's worden geregistreerd op de `app` in `main.py`.
+- Elk commando is een eigen functie met een docstring: Typer toont die als helptekst.
+- Splits commando's op in eigen modules met een eigen `typer.Typer()` zodra `main.py` onoverzichtelijk wordt, en voeg ze toe met `app.add_typer()`.
+- Houd logica buiten de commandofuncties: een commando leest argumenten, roept een gewone functie aan en toont het resultaat. Zo is de logica te testen zonder de CLI.
 
-- Gebruik **Typer** voor commando-parsing en opties, en **Rich** voor visuele consoles, panels, tabellen en voortgangsbalken.
-- Houd commando's modulair en declareer subcommando's via duidelijke functies.
-- Vang verwachte fouten netjes op en print vriendelijke foutmeldingen via `console.print("[bold red]Fout:[/bold red] ...")` met `raise typer.Exit(code=1)`.
+## Invoer en uitvoer
 
-## Type Hints & Testbaarheid
+- Geef alle argumenten en opties een type en een `help`-tekst.
+- Toon uitvoer via de gedeelde Rich `console`, niet met `print()`.
+- Vang verwachte fouten af, toon een duidelijke melding en stop met `raise typer.Exit(code=1)`. Laat geen traceback zien voor fouten die de gebruiker kan herstellen.
 
-- Typeer alle argumenten en opties expliciet.
-- Schrijf unit tests voor commando's met behulp van `typer.testing.CliRunner`.
+## Testen
+
+- Test commando's met `typer.testing.CliRunner` en controleer `exit_code` en uitvoer.
+- Draai de tests met `.venv/bin/pytest`.

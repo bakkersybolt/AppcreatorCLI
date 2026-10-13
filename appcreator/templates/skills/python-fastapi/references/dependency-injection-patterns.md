@@ -1,8 +1,8 @@
-# FastAPI Dependency Injection Patterns
+# Dependency injection in FastAPI
 
-Advanced dependency injection patterns for production FastAPI applications.
+Patronen voor gedeelde dependencies. De voorbeelden zijn algemeen; in dit project staan `get_db` in `backend/app/db/session.py` en `DbSession` in `backend/app/api/deps.py`. Voeg nieuwe aliassen toe in `deps.py`.
 
-## Type Aliases for Clean Signatures
+## Type-aliassen voor korte signaturen
 
 ```python
 from typing import Annotated
@@ -56,7 +56,7 @@ async def delete_user(user_id: int, admin: AdminUser, db: DbSession) -> None:
     await db.commit()
 ```
 
-## Pagination Dependency
+## Paginering
 
 ```python
 from dataclasses import dataclass
@@ -121,7 +121,7 @@ async def list_users(
     )
 ```
 
-## Sorting and Filtering
+## Sorteren en filteren
 
 ```python
 from enum import Enum
@@ -203,7 +203,7 @@ async def list_items(
     return result.scalars().all()
 ```
 
-## Service Layer Dependencies
+## Servicelaag als dependency
 
 ```python
 from typing import Protocol, Annotated
@@ -271,7 +271,7 @@ async def create_user(data: UserCreate, service: UserSvc) -> UserResponse:
     return await service.create(data)
 ```
 
-## Request Context / Scope Dependency
+## Request-context
 
 ```python
 from contextvars import ContextVar
@@ -322,7 +322,7 @@ async def create_order(
     # ... create order
 ```
 
-## Feature Flags Dependency
+## Feature flags
 
 ```python
 from dataclasses import dataclass
@@ -359,7 +359,7 @@ async def get_dashboard(features: Features) -> dict:
     return {"version": "v1", "data": [...]}
 ```
 
-## Rate Limiting Dependency
+## Rate limiting
 
 ```python
 from fastapi import HTTPException, Request
@@ -424,7 +424,7 @@ async def expensive_operation() -> dict:
     return {"status": "ok"}
 ```
 
-## Caching Dependency
+## Caching
 
 ```python
 import hashlib

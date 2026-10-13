@@ -14,6 +14,7 @@ def create_manifest(
     category: str,
     stack: Dict[str, Any],
     skills: List[str],
+    assistants: Optional[List[str]] = None,
 ) -> Path:
     """Creates a new .appcreator.json manifest file in the project directory."""
     manifest_path = project_dir / MANIFEST_FILENAME
@@ -24,6 +25,7 @@ def create_manifest(
         "category": category,
         "stack": stack,
         "skills": skills,
+        "assistants": assistants or ["antigravity"],
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat(),
     }

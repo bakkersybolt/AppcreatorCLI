@@ -1,0 +1,64 @@
+---
+name: docker-devops
+description: "Werkt met de Dockerfiles en docker-compose.yml van dit project: services starten en debuggen, healthchecks en volumes, en images geschikt maken voor productie. Gebruik bij problemen met containers, wijzigingen in docker-compose.yml of het voorbereiden van een deployment."
+---
+
+# Docker-devops
+
+## Wat er al staat
+
+- `docker-compose.yml` in de projectroot, met de services die bij de gekozen stack horen.
+- `backend/Dockerfile`{% if frontend %} en `frontend/Dockerfile`{% endif %}. Dit {% if frontend %}zijn ontwikkelimages: ze draaien{% else %}is een ontwikkelimage: het draait{% endif %} met hot reload en de broncode is als volume gekoppeld.
+{%- if database == "postgres" %}
+- PostgreSQL heeft een healthcheck en een named volume (`postgres_data`). De host-poort komt uit `POSTGRES_PORT` in de `.env` in de projectroot.
+
+Het wachtwoord `postgrespassword` in `docker-compose.yml` is alleen bedoeld voor lokale ontwikkeling.
+{%- endif %}
+
+## Dagelijks gebruik
+
+```bash
+# Services op de achtergrond starten
+docker compose up -d
+
+# Status en poorten
+docker compose ps
+
+# Logs van één service volgen
+docker compose logs -f backend
+
+# Opnieuw bouwen na een wijziging in requirements.txt of package.json
+docker compose up -d --build backend
+
+# Stoppen, data blijft bewaard
+docker compose down
+```
+
+`docker compose down -v` verwijdert ook de volumes{% if database == "postgres" %} en daarmee de hele database{% endif %}. Voer dat alleen uit als de gebruiker daar om vraagt.
+
+## Problemen opsporen
+
+1. `docker compose ps`: draait de service, en is hij `healthy`?
+2. `docker compose logs <service>`: wat is de laatste foutmelding?
+{%- if database == "postgres" %}
+3. Poort bezet (`port is already allocated`): kies een andere `POSTGRES_PORT` in de `.env` en pas de poort in `DATABASE_URL` in `backend/.env` aan.
+4. Backend kan de database niet bereiken: binnen Compose is de hostnaam `postgres`, buiten Compose `localhost`.
+{%- else %}
+3. Poort bezet (`port is already allocated`): zoek met `docker ps` welke container de poort gebruikt.
+{%- endif %}
+
+## Naar productie
+
+Vraag eerst waar de applicatie gaat draaien. Pas daarna de images aan:
+
+- **Backend:** geen `--reload`, geen gekoppelde broncode, draaien als niet-root gebruiker.
+{%- if frontend %}
+- **Frontend:** een multi-stage build: bouwen met Node (`npm run build`) en de map `dist/` serveren met een lichte webserver zoals Nginx.
+{%- endif %}
+- **Geheimen:** wachtwoorden en sleutels komen uit de omgeving of een secrets-voorziening, niet uit `docker-compose.yml` of een gecommit `.env`-bestand.
+- **Instellingen:** zet `DEBUG=False` en beperk de CORS-origins in `backend/app/main.py` tot het eigen domein.
+{%- if database != "none" %}
+- **Database:** gebruik migraties in plaats van `create_all`.
+{%- endif %}
+
+Zet productie-instellingen in een apart bestand, bijvoorbeeld `docker-compose.prod.yml`, zodat de ontwikkelomgeving blijft werken.

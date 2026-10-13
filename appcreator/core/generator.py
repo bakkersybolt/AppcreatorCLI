@@ -6,7 +6,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import jinja2
 
+from appcreator.core.assistants import (
+    ASSISTANTS,
+    PROJECT_CONTEXT_DESCRIPTION,
+    PROJECT_CONTEXT_SOURCE,
+    RULES,
+    assistant_context,
+    project_assistant_context,
+    rule_frontmatter,
+)
 from appcreator.core.manifest import create_manifest
+from appcreator.core.skills import BASIS_SKILLS, stack_skills
 from appcreator.core.naming import make_package_name, make_slug
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -179,14 +189,70 @@ def generate_docker_compose(dst_dir: Path, context: Dict[str, Any]):
         (dst_dir / ".env.example").write_text(root_env, encoding="utf-8")
 
 
-def copy_skill(skill_name: str, dst_dir: Path, context: Dict[str, Any]):
-    """Copies and renders a single skill from templates/skills into dst_dir/.agents/skills/."""
+def write_rules(dst_dir: Path, context: Dict[str, Any]):
+    """Writes the project context and stack rules for every chosen assistant."""
+    rules_source_dir = TEMPLATES_DIR / "rules"
+
+    for key in context["assistants"]:
+        assistant = ASSISTANTS[key]
+        rule_context = {**context, **assistant_context(key)}
+
+        # Universal project context (CLAUDE.md voor Claude Code, always_on rule voor Antigravity)
+        body = render_string((rules_source_dir / PROJECT_CONTEXT_SOURCE).read_text(encoding="utf-8"), rule_context)
+        context_path = dst_dir / assistant.context_file
+        context_path.parent.mkdir(parents=True, exist_ok=True)
+        context_path.write_text(rule_frontmatter(key, PROJECT_CONTEXT_DESCRIPTION) + body, encoding="utf-8")
+
+        # Stack specific rules
+        for rule in RULES:
+            if context.get(rule.stack_key) != rule.stack_value:
+                continue
+            body = (rules_source_dir / f"{rule.name}.md").read_text(encoding="utf-8")
+            rule_path = dst_dir / assistant.rules_dir / f"{rule.name}.md"
+            rule_path.parent.mkdir(parents=True, exist_ok=True)
+            rule_path.write_text(rule_frontmatter(key, rule.description, rule.globs) + body, encoding="utf-8")
+
+
+def copy_skill(skill_name: str, dst_dir: Path, context: Dict[str, Any]) -> bool:
+    """Copies and renders a single skill from templates/skills for every chosen assistant."""
     src_skill_dir = TEMPLATES_DIR / "skills" / skill_name
     if not src_skill_dir.exists():
         return False
-    target_skill_dir = dst_dir / ".agents" / "skills" / skill_name
-    copy_and_render_tree(src_skill_dir, target_skill_dir, context)
+    for key in context["assistants"]:
+        skill_context = {**context, **assistant_context(key)}
+        target_skill_dir = dst_dir / ASSISTANTS[key].skills_dir / skill_name
+        copy_and_render_tree(src_skill_dir, target_skill_dir, skill_context)
     return True
+
+
+def build_context(
+    app_naam: str,
+    category: str,
+    stack: Dict[str, Any],
+    assistants: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Builds the template context for a project from its name, category and stack."""
+    entiteiten = stack.get("entiteiten")
+    if entiteiten is None:
+        if stack.get("kern_domein"):
+            entiteiten = [stack["kern_domein"]]
+        else:
+            entiteiten = []
+
+    return {
+        "app_naam": app_naam,
+        "app_slug": make_slug(app_naam),
+        "package_name": make_package_name(app_naam),
+        "category": category,
+        "backend": stack.get("backend"),
+        "frontend": stack.get("frontend"),
+        "hardware": stack.get("hardware"),
+        "cli": stack.get("cli"),
+        "database": stack.get("database", "none"),
+        "entiteiten": entiteiten,
+        "kern_domein": entiteiten[0] if entiteiten else None,
+        **project_assistant_context(assistants),
+    }
 
 
 def assemble_project(
@@ -195,28 +261,11 @@ def assemble_project(
     stack: Dict[str, Any],
     skills: List[str],
     target_dir: Path,
+    assistants: Optional[List[str]] = None,
 ) -> Path:
     """Assembles all layers and renders the project into target_dir."""
-    entiteiten = stack.get("entiteiten")
-    if entiteiten is None:
-        if stack.get("kern_domein"):
-            entiteiten = [stack["kern_domein"]]
-        else:
-            entiteiten = []
-
-    context = {
-        "app_naam": app_naam,
-        "app_slug": make_slug(app_naam),
-        "package_name": make_package_name(app_naam),
-        "category": category,
-        "backend": stack.get("backend"),
-        "frontend": stack.get("frontend"),
-        "hardware": stack.get("hardware"),
-        "database": stack.get("database", "none"),
-        "entiteiten": entiteiten,
-        "kern_domein": entiteiten[0] if entiteiten else None,
-        "skills": skills,
-    }
+    context = build_context(app_naam, category, stack, assistants)
+    entiteiten = context["entiteiten"]
 
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -265,52 +314,12 @@ def assemble_project(
     # 3. Dynamic Docker Compose
     generate_docker_compose(target_dir, context)
 
-    # 4. Agent Rules (.agents/rules/)
-    agents_rules_dir = target_dir / ".agents" / "rules"
-    agents_rules_dir.mkdir(parents=True, exist_ok=True)
+    # 4. Agent Rules (project context + stack rules per gekozen assistent)
+    write_rules(target_dir, context)
 
-    rules_source_dir = TEMPLATES_DIR / "rules"
-    if rules_source_dir.exists():
-        # Universal project context
-        context_rule = rules_source_dir / "project-context.md.jinja"
-        if context_rule.exists():
-            render_file(context_rule, agents_rules_dir / "project-context.md", context)
-
-        # Stack specific rules
-        if stack.get("backend") == "fastapi":
-            backend_rule = rules_source_dir / "backend-rules.md"
-            if backend_rule.exists():
-                render_file(backend_rule, agents_rules_dir / "backend-rules.md", context)
-
-        if stack.get("frontend") == "vue3":
-            frontend_rule = rules_source_dir / "frontend-rules.md"
-            if frontend_rule.exists():
-                render_file(frontend_rule, agents_rules_dir / "frontend-rules.md", context)
-
-        if stack.get("hardware") == "esp32":
-            esp32_rule = rules_source_dir / "esp32-rules.md"
-            if esp32_rule.exists():
-                render_file(esp32_rule, agents_rules_dir / "esp32-rules.md", context)
-
-        if stack.get("cli") == "python-typer":
-            cli_rule = rules_source_dir / "cli-rules.md"
-            if cli_rule.exists():
-                render_file(cli_rule, agents_rules_dir / "cli-rules.md", context)
-
-    # 5. Agent Skills (.agents/skills/)
-    # Universal init-project skill
-    copy_skill("init-project", target_dir, context)
-
-    # Stack-specific skills
-    if stack.get("backend") == "fastapi":
-        copy_skill("python-fastapi", target_dir, context)
-    if stack.get("frontend") == "vue3":
-        copy_skill("vue-shadcn", target_dir, context)
-    if stack.get("hardware") == "esp32":
-        copy_skill("esp32-development", target_dir, context)
-
-    # Optional chosen skills
-    for skill in skills:
+    # 5. Agent Skills: basis, stack-specifiek en de gekozen optionele skills
+    alle_skills = list(dict.fromkeys(BASIS_SKILLS + stack_skills(stack) + skills))
+    for skill in alle_skills:
         copy_skill(skill, target_dir, context)
 
     # 6. Create .appcreator.json manifest
@@ -319,7 +328,8 @@ def assemble_project(
         app_naam=app_naam,
         category=category,
         stack=stack,
-        skills=list(set(["init-project"] + skills)),
+        skills=alle_skills,
+        assistants=context["assistants"],
     )
 
     return target_dir

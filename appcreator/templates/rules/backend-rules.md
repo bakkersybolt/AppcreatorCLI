@@ -1,28 +1,26 @@
----
-trigger: glob
-globs: "backend/**/*"
-description: "Strikte architectuur- en codeerstandaarden voor de Python / FastAPI backend."
----
+# Python & FastAPI backend
 
-# Python & FastAPI Backend Regels
+Volg PEP 8 en geef alle functies type hints.
 
-Houd je altijd aan PEP 8 en gebruik strikte type hints.
+## Structuur
 
-## Architectuur & Mappenstructuur
+- **Routers (`backend/app/api/v1/endpoints/`):** alleen HTTP-afhandeling: invoer valideren, een service of query aanroepen en het antwoord teruggeven. Registreer elke nieuwe router in `backend/app/api/v1/router.py`.
+- **Services (`backend/app/services/`):** maak deze map aan zodra een endpoint meer doet dan één query. Businesslogica hoort hier, zodat routers dun en los testbaar blijven.
+- **Models (`backend/app/models/`):** SQLAlchemy 2.0 met `Mapped` en `mapped_column`. Importeer elk nieuw model in `models/__init__.py`, anders kent `Base.metadata` de tabel niet.
+- **Schemas (`backend/app/schemas/`):** Pydantic v2 met `ConfigDict`. Gebruik aparte schema's voor invoer (`Create`, `Update`) en uitvoer (`Response`), zodat interne velden niet in de API lekken.
+- **Dependencies (`backend/app/api/deps.py`):** `Annotated`-aliassen zoals `DbSession`. Voeg nieuwe gedeelde dependencies hier toe.
+- **Configuratie (`backend/app/core/config.py`):** lees instellingen via `settings`, niet via `os.environ` elders in de code.
 
-- **Routers (`backend/app/api/v1/endpoints/`):** FastAPI route handlers. Geen directe database queries of complexe business logica hier.
-- **Services (`backend/app/services/`):** Domein en business logica. Schrijf herbruikbare functies en classes.
-- **Models (`backend/app/models/`):** Uitsluitend SQLAlchemy 2.0 (async) modellen via `Mapped` en `mapped_column`.
-- **Schemas (`backend/app/schemas/`):** Uitsluitend Pydantic v2 modellen (gebruik `model_config = ConfigDict(...)`). Splits ALTIJD input (`Create`, `Update`) en output (`Response`).
-- **Dependencies (`backend/app/api/deps.py`):** Gebruik Python `Annotated` syntax voor Dependency Injection (bijv. `DbSession = Annotated[AsyncSession, Depends(get_db)]`).
-- **Configuratie (`backend/app/core/config.py`):** Beheer alle instellingen en omgevingsvariabelen via `pydantic-settings`.
+## Async
 
-## Asynchrone Verwerking
+- Endpoints die de database of het netwerk raken zijn `async`.
+- Gebruik geen blokkerende aanroepen (`time.sleep`, `requests`, synchrone databasedrivers) in async code: die zetten de hele event loop stil. Gebruik `asyncio.sleep`, `httpx.AsyncClient` of `asyncio.to_thread`.
 
-- Gebruik altijd `async` endpoints voor database- of I/O-operaties.
-- Gebruik NOOIT synchrone blocking calls (zoals `time.sleep`) binnen async routes; gebruik `asyncio.sleep` of `run_in_executor`.
+## Fouten
 
-## Foutafhandeling
+- Gebruik `HTTPException` met een passende statuscode en een duidelijke melding.
+- Log onverwachte fouten en geef geen stack traces of interne details terug aan de client.
 
-- Gooi FastAPI `HTTPException` met heldere foutboodschappen en correcte HTTP status codes (400, 401, 403, 404, 422).
-- Zorg dat interne serverfouten netjes gelogd worden.
+## Suppressies
+
+- Gebruik `# noqa` of `# type: ignore` alleen met een toelichting op dezelfde regel waarom het nodig is.

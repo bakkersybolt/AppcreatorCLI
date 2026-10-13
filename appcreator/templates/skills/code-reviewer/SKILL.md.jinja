@@ -1,0 +1,73 @@
+---
+name: code-reviewer
+description: "Beoordeelt codewijzigingen op fouten, security, types en architectuur en rapporteert de bevindingen op ernst. Gebruik wanneer de gebruiker om een review vraagt, of voor een commit, merge of oplevering."
+---
+
+# Code-reviewer
+
+Een review is alleen lezen: wijzig geen bestanden, tenzij de gebruiker daar na het rapport om vraagt.
+
+## Stap 1: Bepaal wat je beoordeelt
+
+- Niet-gecommitte wijzigingen: `git diff` en `git diff --staged`.
+- Een branch: `git diff main...HEAD`.
+- Noemt de gebruiker bestanden of een commit, beoordeel dan die.
+
+Lees bij elke wijziging ook de omliggende code. Een regel kan op zichzelf kloppen en toch een aanroeper breken.
+
+## Stap 2: Controleer
+
+Zoek eerst naar fouten in gedrag, daarna naar de punten hieronder. De projectregels in `{{ rules_dir }}/` zijn de norm.
+
+### Algemeen
+
+- Doet de code wat de wijziging belooft, ook bij lege invoer, ontbrekende waarden en fouten?
+- Staan er wachtwoorden, tokens of sleutels in de code of in gecommitte configuratie?
+- Zijn er suppressies (`noqa`, `type: ignore`, `eslint-disable`, `@ts-ignore`) zonder toelichting?
+- Is nieuw gedrag gedekt door een test?
+{%- if backend %}
+
+### Backend
+
+- Worden queries opgebouwd met SQLAlchemy en parameters, niet met samengevoegde strings?
+- Controleert elk endpoint dat het nodig heeft of de gebruiker is ingelogd en dit record mag zien of wijzigen?
+- Staan er blokkerende aanroepen in async code (`time.sleep`, `requests`)?
+- Geeft de API interne velden of foutdetails terug die de client niet hoort te zien?
+{%- endif %}
+{%- if frontend %}
+
+### Frontend
+
+- Wordt `any` gebruikt waar een type of `unknown` hoort?
+- Worden Shadcn-Vue-componenten gebruikt in plaats van zelfgebouwde knoppen en dialogs?
+- Worden laad- en foutsituaties van API-aanroepen aan de gebruiker getoond?
+- Hebben knoppen, velden en dialogs labels, en werkt de layout op een smal scherm?
+{%- endif %}
+{%- if hardware %}
+
+### Firmware
+
+- Staan er `delay()`-aanroepen of wachtlussen zonder maximale duur in `loop()`?
+- Wordt er in lussen dynamisch geheugen gealloceerd of worden `String`-waarden aaneengeregen?
+- Kunnen buffers overlopen bij onverwacht lange invoer?
+- Herstelt de code zelf na een verbroken wifi- of serverbinding?
+{%- endif %}
+{%- if cli %}
+
+### CLI
+
+- Krijgt de gebruiker bij een verwachte fout een duidelijke melding en een exitcode ongelijk aan 0, zonder traceback?
+- Hebben nieuwe argumenten en opties een type en een helptekst?
+- Staat de logica buiten de commandofunctie, zodat die los te testen is?
+{%- endif %}
+
+## Stap 3: Rapporteer
+
+Begin met het oordeel in één zin: kan dit zo door, of moet er eerst iets worden opgelost? Geef daarna de bevindingen in een tabel, de ernstigste bovenaan:
+
+| Bestand:regel | Ernst | Wat er misgaat | Voorstel |
+| :--- | :--- | :--- | :--- |
+
+Gebruik drie niveaus: **kritiek** (fout gedrag, dataverlies of een beveiligingslek), **verbetering** (werkt, maar wijkt af van de projectregels of is fragiel) en **tip**.
+
+Beschrijf bij elke bevinding wat er concreet misgaat en wanneer. Meld alleen wat je in de code hebt gezien. Zijn er geen bevindingen, zeg dat dan.

@@ -2,16 +2,24 @@
 import { ref, onMounted } from 'vue'
 import { api } from '@/services/api'
 
+interface HealthResponse {
+  status: string
+  app_name: string
+  environment: string
+  version: string
+}
+
 const backendStatus = ref<'checking' | 'connected' | 'disconnected'>('checking')
-const backendInfo = ref<any>(null)
+const backendInfo = ref<HealthResponse | null>(null)
 
 const checkBackend = async () => {
   backendStatus.value = 'checking'
   try {
-    const res = await api.get('/health')
+    const res = await api.get<HealthResponse>('/health')
     backendInfo.value = res.data
     backendStatus.value = 'connected'
-  } catch (err) {
+  } catch {
+    backendInfo.value = null
     backendStatus.value = 'disconnected'
   }
 }
@@ -32,7 +40,7 @@ onMounted(() => {
         Welkom bij {{ app_naam }}
       </h1>
       <p class="text-muted-foreground text-base max-w-2xl leading-relaxed">
-        Je Vue 3 frontend en FastAPI backend zijn succesvol geconfigureerd. Gebruik Google Antigravity om direct verder te bouwen met interactieve AI-skills.
+        Je Vue 3 frontend en FastAPI backend zijn succesvol geconfigureerd. Gebruik {{ assistant_namen }} om verder te bouwen met de meegeleverde AI-skills.
       </p>
     </div>
 
@@ -74,18 +82,14 @@ onMounted(() => {
 
       <!-- AI Skills Kickoff Kaart -->
       <div class="p-6 rounded-xl border bg-card space-y-4">
-        <h2 class="font-semibold text-lg">Google Antigravity AI Skills</h2>
+        <h2 class="font-semibold text-lg">AI-skills</h2>
         <p class="text-sm text-muted-foreground">
-          Start in de chat direct de gewenste workflow:
+          Start in de chat van {{ assistant_namen }}:
         </p>
         <ul class="text-xs space-y-2 font-mono">
           <li class="p-2 rounded bg-muted/50 flex justify-between items-center">
             <span class="text-primary font-bold">/init-project</span>
             <span class="text-muted-foreground">Omgeving & setup intake</span>
-          </li>
-          <li class="p-2 rounded bg-muted/50 flex justify-between items-center">
-            <span class="text-primary font-bold">/brainstorm-architect</span>
-            <span class="text-muted-foreground">Shadcn UI & Datamodellen</span>
           </li>
         </ul>
       </div>

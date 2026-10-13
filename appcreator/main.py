@@ -9,10 +9,12 @@ import typer
 from rich.table import Table
 
 from appcreator.core.detector import detect_system_tools
-from appcreator.core.generator import TEMPLATES_DIR, assemble_project, copy_skill
+from appcreator.core.assistants import ASSISTANTS, normalize_assistants
+from appcreator.core.generator import TEMPLATES_DIR, assemble_project, build_context, copy_skill
 from appcreator.core.installer import init_git_repository, setup_node_environment, setup_python_environment
 from appcreator.core.manifest import add_skill_to_manifest, load_manifest
-from appcreator.core.naming import make_slug, validate_app_name
+from appcreator.core.naming import validate_app_name
+from appcreator.core.skills import optionele_skills_voor, skill_past_bij_project
 from appcreator.ui import (
     console,
     print_banner,
@@ -26,7 +28,7 @@ from appcreator.ui import (
 
 app = typer.Typer(
     name="appcreator",
-    help="AppCreator: Genereer AI-ready startmappen voor je projecten met ingebouwde Antigravity skills.",
+    help="AppCreator: Genereer AI-ready startmappen voor je projecten met ingebouwde skills voor Google Antigravity en Claude Code.",
     no_args_is_help=False,
 )
 
@@ -37,12 +39,10 @@ CATEGORIEEN = [
     {"key": "cli", "name": "Python CLI Tool (Typer + Rich)"},
 ]
 
-OPTIONELE_SKILLS = [
-    {"name": "brainstorm-architect", "desc": "Domeinen, models & UI brainstorming (Aanbevolen)", "checked": True},
-    {"name": "test-engineer", "desc": "Pytest / Vitest testautomatisering (Aanbevolen)", "checked": True},
-    {"name": "code-reviewer", "desc": "Clean code, security & type review (Aanbevolen)", "checked": True},
-    {"name": "database-architect", "desc": "Alembic migraties & query optimalisatie", "checked": False},
-    {"name": "docker-devops", "desc": "Dockerfiles & compose netwerken", "checked": False},
+ASSISTENT_KEUZES = [
+    {"name": "Google Antigravity (.agents/)", "value": ["antigravity"]},
+    {"name": "Claude Code (CLAUDE.md + .claude/)", "value": ["claude"]},
+    {"name": "Beide", "value": ["antigravity", "claude"]},
 ]
 
 
@@ -189,26 +189,33 @@ def create(
     elif geselecteerde_cat == "cli":
         stack_config["cli"] = "python-typer"
 
-    # 4. Optionele AI-skills selecteren
-    print_step(4, 5, "Google Antigravity AI-Skills (.agents/)")
+    # 4. AI-assistent en optionele AI-skills selecteren
+    print_step(4, 5, "AI-assistent & Skills")
+    assistants = questionary.select(
+        "Voor welke AI-assistent wil je regels en skills genereren?",
+        choices=[questionary.Choice(title=k["name"], value=k["value"]) for k in ASSISTENT_KEUZES],
+    ).ask()
+    assistants = normalize_assistants(assistants)
+
     console.print("[dim]Basis-skills (init-project en stack-regels) worden altijd automatisch toegevoegd.[/dim]")
 
+    passende_skills = optionele_skills_voor(geselecteerde_cat, stack_config.get("database"))
     skill_choices = [
         questionary.Choice(
             title=f"{s['name']}: {s['desc']}",
             value=s["name"],
             checked=s["checked"],
         )
-        for s in OPTIONELE_SKILLS
+        for s in passende_skills
     ]
 
     gekozen_skills = questionary.checkbox(
-        "Selecteer welke extra AI-rollen je wilt toevoegen:",
+        "Selecteer welke extra AI-skills je wilt toevoegen:",
         choices=skill_choices,
     ).ask()
 
     if gekozen_skills is None:
-        gekozen_skills = ["brainstorm-architect", "test-engineer", "code-reviewer"]
+        gekozen_skills = [s["name"] for s in passende_skills if s["checked"]]
 
     # 5. Installatie & Git opties
     print_step(5, 5, "Tooling & Installatie")
@@ -238,6 +245,7 @@ def create(
         "hardware": stack_config.get("hardware"),
         "database": stack_config.get("database"),
         "entiteiten": stack_config.get("entiteiten"),
+        "assistants": assistants,
         "skills": gekozen_skills,
         "install_deps": install_deps,
         "init_git": init_git,
@@ -258,6 +266,7 @@ def create(
             stack=stack_config,
             skills=gekozen_skills,
             target_dir=doel_pad,
+            assistants=assistants,
         )
 
     console.print(f"[green]✓[/green] Bestanden en mappenstructuur gegenereerd in [cyan]{doel_pad}[/cyan]")
@@ -307,8 +316,8 @@ def create(
             )
 
     # Resultaat & instructies
-    alle_skills = sorted(list(set(["init-project"] + gekozen_skills)))
-    print_success_card(app_naam, str(doel_pad), alle_skills)
+    alle_skills = (load_manifest(doel_pad) or {}).get("skills", gekozen_skills)
+    print_success_card(app_naam, str(doel_pad), alle_skills, assistants)
 
 
 @app.command(name="list")
@@ -329,7 +338,7 @@ def list_resources():
 
     # Skills tabel
     skills_dir = TEMPLATES_DIR / "skills"
-    skill_table = Table(title="🤖 Beschikbare AI-Skills (.agents/skills/)", border_style="cyan")
+    skill_table = Table(title="🤖 Beschikbare AI-Skills", border_style="cyan")
     skill_table.add_column("Skill Naam", style="bold yellow", width=22)
     skill_table.add_column("Doel & Functionaliteit", style="white")
 
@@ -337,6 +346,8 @@ def list_resources():
         for skill_path in sorted(skills_dir.iterdir()):
             if skill_path.is_dir() and not skill_path.name.startswith("."):
                 skill_file = skill_path / "SKILL.md"
+                if not skill_file.exists():
+                    skill_file = skill_path / "SKILL.md.jinja"
                 desc = "Geen omschrijving"
                 if skill_file.exists():
                     for line in skill_file.read_text(encoding="utf-8").splitlines():
@@ -356,27 +367,43 @@ def list_resources():
 def add_skill(
     skill_naam: Optional[str] = typer.Argument(None, help="De naam van de toe te voegen skill"),
 ):
-    """Voeg een AI-skill toe aan het huidige project (.agents/skills/)."""
+    """Voeg een AI-skill toe aan het huidige project (voor de assistenten uit het manifest)."""
     manifest = load_manifest()
     project_dir = Path.cwd()
 
-    if not (project_dir / ".agents").exists():
-        print_warning("Geen '.agents' map gevonden in de huidige directory. Weet je zeker dat dit een AI-project is?")
+    assistants = normalize_assistants(manifest.get("assistants") if manifest else None)
+    if not manifest:
+        # Zonder manifest: gebruik de assistent(en) waarvan al een skills-map in het project staat
+        aanwezig = [key for key, a in ASSISTANTS.items() if (project_dir / a.skills_dir).exists()]
+        assistants = normalize_assistants(aanwezig)
+
+    if not any((project_dir / ASSISTANTS[key].skills_dir).exists() for key in assistants):
+        print_warning("Geen skills-map (.agents/ of .claude/) gevonden in de huidige directory. Weet je zeker dat dit een AI-project is?")
         doorgaan = questionary.confirm("Wil je toch doorgaan?").ask()
         if not doorgaan:
             raise typer.Exit()
 
     skills_dir = TEMPLATES_DIR / "skills"
-    beschikbare_skills = [
+    beschikbare_skills = sorted(
         d.name for d in skills_dir.iterdir() if d.is_dir() and not d.name.startswith(".")
-    ]
+    )
+
+    # Met een manifest bieden we alleen skills aan die bij het projecttype passen
+    if manifest:
+        category = manifest.get("category", "")
+        stack = manifest.get("stack", {})
+        passende_skills = [s for s in beschikbare_skills if skill_past_bij_project(s, category, stack)]
+    else:
+        category = "fullstack"
+        stack = {"backend": "fastapi", "frontend": "vue3"}
+        passende_skills = beschikbare_skills
 
     huidige_skills = manifest.get("skills", []) if manifest else []
-    kandidaten = [s for s in beschikbare_skills if s not in huidige_skills]
+    kandidaten = [s for s in passende_skills if s not in huidige_skills]
 
     if not skill_naam:
         if not kandidaten:
-            print_info("Alle beschikbare skills zijn al geïnstalleerd in dit project!")
+            print_info("Alle passende skills zijn al geïnstalleerd in dit project!")
             raise typer.Exit()
 
         skill_naam = questionary.select(
@@ -391,17 +418,18 @@ def add_skill(
         print_error(f"Skill '{skill_naam}' niet gevonden. Beschikbaar: {', '.join(beschikbare_skills)}")
         raise typer.Exit(1)
 
-    context = manifest or {
-        "app_naam": project_dir.name,
-        "app_slug": make_slug(project_dir.name),
-        "backend": "fastapi",
-        "frontend": "vue3",
-    }
+    if skill_naam not in passende_skills:
+        print_error(f"Skill '{skill_naam}' past niet bij dit projecttype ({category}). Passend: {', '.join(passende_skills)}")
+        raise typer.Exit(1)
+
+    app_naam = manifest.get("app_naam", project_dir.name) if manifest else project_dir.name
+    context = build_context(app_naam, category, stack, assistants)
 
     succes = copy_skill(skill_naam, project_dir, context)
     if succes:
         add_skill_to_manifest(project_dir, skill_naam)
-        console.print(f"[green]✓ Skill '{skill_naam}' succesvol toegevoegd aan .agents/skills/{skill_naam}[/green]")
+        doelen = ", ".join(f"{ASSISTANTS[key].skills_dir}/{skill_naam}" for key in assistants)
+        console.print(f"[green]✓ Skill '{skill_naam}' succesvol toegevoegd aan {doelen}[/green]")
     else:
         print_error(f"Kon skill '{skill_naam}' niet kopiëren.")
 
@@ -427,6 +455,9 @@ def show_info():
     if stack:
         for k, v in stack.items():
             table.add_row(f"Stack: {k}", str(v))
+
+    assistants = normalize_assistants(manifest.get("assistants"))
+    table.add_row("AI-assistent", ", ".join(ASSISTANTS[key].naam for key in assistants))
 
     skills = manifest.get("skills", [])
     table.add_row("Geïnstalleerde Skills", ", ".join(skills))

@@ -1,29 +1,67 @@
----
-trigger: always_on
-description: "Globale projectmetadata, repository context en omgevingsdetails. Geldt voor de gehele repository."
----
+# Projectcontext: {{ app_naam }}
 
-## Context van dit project
+Dit project is gegenereerd met AppCreator CLI. De gekozen stack staat ook in `.appcreator.json`.
 
-Dit project is gegenereerd via AppCreator CLI.
-
-- **Projectnaam:** {{ app_naam }}
 - **Categorie:** {{ category }}
-{% if backend %}
-- **Backend:** {{ backend }}
-{% endif %}
-{% if frontend %}
-- **Frontend:** {{ frontend }}
-{% endif %}
-{% if hardware %}
-- **Hardware / Embedded:** {{ hardware }}
-{% endif %}
-{% if database and database != "none" %}
+{%- if backend %}
+- **Backend:** FastAPI (async, SQLAlchemy 2.0, Pydantic v2) in `backend/`
+{%- endif %}
+{%- if frontend %}
+- **Frontend:** Vue 3 (Vite, TypeScript, Tailwind, Shadcn-Vue) in `frontend/`
+{%- endif %}
+{%- if hardware %}
+- **Hardware:** ESP32 met PlatformIO (Arduino framework), broncode in `src/`
+{%- endif %}
+{%- if cli %}
+- **CLI:** Typer + Rich, package in `src/{{ package_name }}/`
+{%- endif %}
+{%- if database and database != "none" %}
 - **Database:** {{ database }}
-{% endif %}
-{% if entiteiten %}
-- **Entiteiten / Kern Domeinen:** {{ entiteiten | join(', ') }}
-{% elif kern_domein %}
-- **Kern Entiteit / Domein:** {{ kern_domein }}
-{% endif %}
+{%- endif %}
+{%- if entiteiten %}
+- **Entiteiten:** {{ entiteiten | join(', ') }}
+{%- endif %}
 
+## Commando's
+
+{% if backend or frontend -%}
+- Alles starten met gecombineerde logs: `appcreator dev` (of `./dev.sh`)
+{% endif -%}
+{% if backend -%}
+- Backend starten: `cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000`
+- Backend testen: `cd backend && .venv/bin/pytest` (er zijn nog geen tests; zie de skill `test-engineer`)
+- API-documentatie: http://localhost:8000/docs, alle routes staan onder `/api/v1`
+{% endif -%}
+{% if frontend -%}
+- Frontend starten: `cd frontend && npm run dev` (http://localhost:5173)
+- Frontend controleren: `cd frontend && npm run lint && npm run build`
+- Frontend testen: `cd frontend && npm run test`
+- TypeScript-types uit de API genereren: `cd frontend && npm run generate:types` (de backend moet draaien)
+{% endif -%}
+{% if database == "postgres" -%}
+- Database starten: `docker compose up -d postgres` (poort via `POSTGRES_PORT` in `.env` in de projectroot)
+{% endif -%}
+{% if hardware -%}
+- Compileren: `pio run`
+- Flashen: `pio run --target upload`
+- Seriële monitor: `pio device monitor -b 115200`
+{% endif -%}
+{% if cli -%}
+- Installeren voor ontwikkeling: `python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`
+- Uitvoeren: `.venv/bin/{{ app_slug }} --help`
+- Testen: `.venv/bin/pytest`
+{% endif %}
+{%- if backend %}
+## Stand van de gegenereerde code
+
+{% if entiteiten -%}
+- De endpoints voor {{ entiteiten | join(', ') }} in `backend/app/api/v1/endpoints/` zijn voorbeelden met een lijst in het geheugen. Ze gebruiken de database nog niet; vervang ze door echte queries zodra het datamodel vaststaat.
+{% endif -%}
+{% if database != "none" -%}
+- Tabellen worden bij het opstarten aangemaakt met `create_all`. Er is nog geen Alembic-setup; zie de skill `database-architect` als die is geïnstalleerd.
+{% endif -%}
+- CORS, `DEBUG` en het databasewachtwoord staan op ontwikkelwaarden en zijn niet geschikt voor productie.
+{% endif %}
+## AI-skills
+
+Skills voor terugkerende taken staan in `{{ skills_dir }}/`. Begin een nieuw project met `/init-project`.

@@ -1,0 +1,82 @@
+---
+name: init-project
+description: "Intake voor een nieuw gegenereerd project: controleert de ontwikkelomgeving en legt doel en scope vast in de README en de projectcontext. Gebruik direct na het genereren van het project, of wanneer de gebruiker /init-project typt of vraagt om het project op te starten."
+---
+
+# Init-project
+
+Doorloop de stappen in volgorde. Stel de intakevragen pas na de omgevingscontrole.
+
+## Stap 1: Omgeving controleren
+
+1. Lees `{{ context_file }}` en `.appcreator.json` voor de gekozen stack.
+2. Controleer de onderdelen hieronder en meld per onderdeel in één regel of het in orde is.
+{%- if backend %}
+   - **Backend:** bestaat `backend/.venv`? Zo niet: `cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
+{%- endif %}
+{%- if frontend %}
+   - **Frontend:** bestaat `frontend/node_modules`? Zo niet: `cd frontend && npm install`.
+{%- endif %}
+{%- if database == "postgres" %}
+   - **Database:** is Docker beschikbaar (`docker --version`)? PostgreSQL draait in een container.
+{%- endif %}
+{%- if hardware %}
+   - **PlatformIO:** werkt `pio --version`? Zo niet: verwijs naar de installatie-instructies van PlatformIO.
+   - **Build:** slaagt `pio run`?
+{%- endif %}
+{%- if cli %}
+   - **Python-omgeving:** bestaat `.venv`? Zo niet: `python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`.
+   - **Tests:** slaagt `.venv/bin/pytest`?
+{%- endif %}
+   - **Git:** is er een repository (`git status`)?
+3. Vraag toestemming voordat je iets installeert.
+{%- if backend or frontend %}
+4. Meld dat het project lokaal start met `appcreator dev` (of `./dev.sh`).
+{%- endif %}
+
+## Stap 2: Intake
+
+Stel deze drie vragen in één bericht en wacht op het antwoord:
+
+1. **Wat is het hoofddoel?** Welk probleem lost het op, en voor wie?
+{%- if hardware %}
+2. **Wat meet of bestuurt het apparaat?** Welke sensoren, actuatoren en verbindingen (wifi, MQTT, serieel) zijn er?
+3. **Wat zijn de randvoorwaarden?** Bijvoorbeeld batterijvoeding, meetinterval of een bestaand backend-systeem.
+{%- elif cli %}
+2. **Welke twee of drie commando's moet de tool als eerste hebben?** Wat is de invoer en de uitvoer van elk?
+3. **Zijn er bijzondere wensen?** Bijvoorbeeld configuratiebestanden, externe API's of uitvoer als JSON.
+{%- else %}
+2. **Wat is de kern van de eerste versie?** Welke twee of drie acties moet een gebruiker direct kunnen uitvoeren?
+3. **Zijn er bijzondere wensen?** Bijvoorbeeld inloggen en rollen, koppelingen met externe API's of realtime updates.
+{%- endif %}
+
+Vraag door als een antwoord te vaag is om een eerste versie af te bakenen.
+
+## Stap 3: Vastleggen
+
+1. **`README.md`:** vervang de inleidende alinea door het doel en voeg een sectie "Kernfunctionaliteiten" toe. Laat de bestaande installatie- en startinstructies staan.
+2. **Projectcontext:** voeg onderaan {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %} deze sectie toe, zodat elke volgende sessie het doel kent:
+
+   ```markdown
+   ## Doel & scope
+
+   - **Hoofddoel:** <probleem en oplossing in één zin>
+   - **Doelgroep:** <primaire gebruikers>
+   - **Eerste versie:**
+     - <functie 1>
+     - <functie 2>
+     - <functie 3>
+   - **Aanvullende wensen:** <of "geen">
+   ```
+
+## Stap 4: Vervolg
+
+Vat in twee zinnen samen wat er is vastgelegd.
+{% if backend %}
+Bestaat de skill `brainstorm-architect` in `{{ skills_dir }}/`? Stel dan voor om daarmee het datamodel{% if frontend %} en de schermen{% endif %} uit te werken (`/brainstorm-architect`). Het doel en de doelgroep zijn al bekend en hoeven daar niet opnieuw gevraagd te worden.
+{%- if assistant == "antigravity" %} Tip voor de gebruiker: met `/grill-me` verloopt die sessie als een interview.{% endif %}
+
+Bestaat die skill niet, vraag dan welke functie uit de eerste versie als eerste gebouwd moet worden.
+{% else %}
+Vraag welke functie uit de eerste versie als eerste gebouwd moet worden en stel een eerste stap voor.
+{% endif %}
