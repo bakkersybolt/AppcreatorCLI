@@ -7,17 +7,13 @@ BASIS_SKILLS = ["init-project"]
 # (stack key, stack value, skill) - worden automatisch toegevoegd bij de bijbehorende stack
 STACK_SKILLS = [
     ("backend", "fastapi", "python-fastapi"),
+    ("backend", "fastapi", "brainstorm-architect"),
+    ("backend", "fastapi", "feature-builder"),
     ("frontend", "vue3", "vue-shadcn"),
     ("hardware", "esp32", "esp32-development"),
 ]
 
 OPTIONELE_SKILLS: List[Dict[str, Any]] = [
-    {
-        "name": "brainstorm-architect",
-        "desc": "Datamodel & schermen ontwerpen en bouwen (Aanbevolen)",
-        "checked": True,
-        "categories": ["fullstack", "backend"],
-    },
     {
         "name": "test-engineer",
         "desc": "Testautomatisering met Pytest / Vitest (Aanbevolen)",

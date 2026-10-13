@@ -75,4 +75,12 @@ De regels en skills voor {{ assistant_namen }} staan hier:
 {% if "claude" in assistants -%}
 | Claude Code | `CLAUDE.md` en `.claude/rules/` | `.claude/skills/` |
 {% endif %}
+{% if backend -%}
+Werk in deze volgorde:
+
+1. `/init-project` controleert de ontwikkelomgeving.
+2. `/brainstorm-architect` is de ontwerpsessie: in rondes worden het doel, de gebruikers, het datamodel, de API{% if frontend %} en de schermen{% endif %} uitgediept. De uitkomst staat in `docs/ontwerp.md` en `docs/bouwplan.md`.
+3. `/feature-builder` bouwt de applicatie plak voor plak volgens het bouwplan.
+{%- else -%}
 Begin in de chat met `/init-project`. Die skill controleert de ontwikkelomgeving en legt het doel van de applicatie vast.
+{%- endif %}

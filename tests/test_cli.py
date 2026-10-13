@@ -134,3 +134,40 @@ def test_create_wizard_generates_claude_cli_project(tmp_path, monkeypatch):
     assert "Claude Code" in result.output
     assert "antigravity ." not in result.output
 
+
+def test_create_wizard_fullstack_asks_no_entities_and_installs_design_session(tmp_path, monkeypatch):
+    import appcreator.main as main_module
+
+    checkbox_vragen = []
+
+    def fake_select(message, choices, **kwargs):
+        if "hoofdrichting" in message:
+            return _Antwoord(next(c for c in choices if "Fullstack" in c))
+        if "database" in message:
+            return _Antwoord("sqlite")
+        if "AI-assistent" in message:
+            return _Antwoord(next(c.value for c in choices if c.title == "Beide"))
+        raise AssertionError(f"Onverwachte vraag: {message}")
+
+    def fake_checkbox(message, choices, **kwargs):
+        checkbox_vragen.append((message, [c.value for c in choices]))
+        return _Antwoord([])
+
+    monkeypatch.setattr(main_module.questionary, "select", fake_select)
+    monkeypatch.setattr(main_module.questionary, "checkbox", fake_checkbox)
+    monkeypatch.setattr(main_module.questionary, "confirm", lambda message, **kwargs: _Antwoord("genereren" in message))
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["create", "WebApp"])
+
+    assert result.exit_code == 0, result.output
+    # Alleen de skillvraag; de entiteitenvraag bestaat niet meer
+    assert len(checkbox_vragen) == 1
+    assert checkbox_vragen[0][1] == ["test-engineer", "code-reviewer", "database-architect", "docker-devops"]
+
+    project = tmp_path / "WebApp"
+    for skills_dir in [".agents/skills", ".claude/skills"]:
+        assert (project / skills_dir / "brainstorm-architect" / "SKILL.md").is_file()
+        assert (project / skills_dir / "feature-builder" / "SKILL.md").is_file()
+    assert sorted(p.name for p in (project / "backend" / "app" / "models").glob("*.py")) == ["__init__.py"]
+

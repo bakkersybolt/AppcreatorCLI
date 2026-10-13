@@ -1,0 +1,54 @@
+---
+name: feature-builder
+description: "Bouwt de volgende plak uit docs/bouwplan.md volgens het ontwerp in docs/ontwerp.md, van model en endpoint tot en met scherm, en vinkt hem af. Gebruik na /brainstorm-architect, of wanneer de gebruiker wil beginnen of verdergaan met het bouwen van de applicatie."
+---
+
+# Feature-builder
+
+Bouw één plak per keer en maak die helemaal af voordat je aan de volgende begint. Een plak is af als de gebruiker hem kan uitproberen.
+
+## Stap 1: Bepaal wat je bouwt
+
+1. Lees `docs/ontwerp.md` en `docs/bouwplan.md`. Ontbreekt een van beide, bouw dan niet op gevoel: verwijs naar `/brainstorm-architect`.
+2. Pak de eerste plak die niet is afgevinkt, tenzij de gebruiker een andere noemt.
+3. Vertel in twee of drie zinnen wat je gaat bouwen en wat de gebruiker daarna kan. Vraag akkoord.
+4. Raakt de plak een punt onder "Open vragen en aannames" dat nog niet is beslist? Leg dat eerst voor.
+
+## Stap 2: Backend
+
+De skill `python-fastapi` beschrijft het patroon met een volledig voorbeeld.
+
+1. **Model** in `backend/app/models/`, en importeer het in `models/__init__.py`.
+2. **Schema's** (`Create`, `Update`, `Response`) in `backend/app/schemas/`.
+3. **Endpoints** in `backend/app/api/v1/endpoints/` volgens de tabel in het ontwerp, en registreer de router in `backend/app/api/v1/router.py`.
+4. **Rechten:** pas toe wat het ontwerp onder "Wie mag" zegt. Sla dit niet over omdat het in de eerste plak nog niet opvalt.
+{%- if database == "none" %}
+
+Dit project is gegenereerd zonder database: `get_db` levert `None`. Bespreek met de gebruiker welke database er komt en richt die in voordat je queries schrijft.
+{%- else %}
+
+`create_all` maakt alleen ontbrekende tabellen aan en past bestaande niet aan. Vraag bij een gewijzigd model of de ontwikkeldatabase opnieuw mag worden aangemaakt, of gebruik migraties.
+{%- endif %}
+
+Controleer de backend voordat je verdergaat: roep de nieuwe endpoints aan via http://localhost:8000/docs of schrijf er een test voor.
+{%- if frontend %}
+
+## Stap 3: Frontend
+
+De skill `vue-shadcn` beschrijft componenten, formulieren en het thema.
+
+1. **Types:** genereer ze met `cd frontend && npm run generate:types` terwijl de backend draait.
+2. **Componenten:** installeer de Shadcn-Vue-componenten die het scherm nodig heeft.
+3. **Scherm:** bouw de view in `frontend/src/views/` volgens de beschrijving in het ontwerp, inclusief de toestanden leeg, laden en fout.
+4. **Route en navigatie:** voeg de route toe in `frontend/src/router/index.ts` en neem het scherm op in de navigatie.
+5. **Thema:** is dit de eerste plak met een scherm, zet dan eerst de uitstraling uit het ontwerp in `frontend/src/assets/index.css`.
+
+Controleer met `cd frontend && npm run lint && npm run build`.
+{%- endif %}
+
+## Stap {{ 4 if frontend else 3 }}: Afronden
+
+1. Loop de stroom uit het ontwerp na die bij deze plak hoort: werkt elke stap?
+2. Vink de plak af in `docs/bouwplan.md`.
+3. Wijkt wat je hebt gebouwd af van het ontwerp, werk dan `docs/ontwerp.md` bij. Het ontwerp moet blijven kloppen met de code.
+4. Meld wat de gebruiker nu kan uitproberen en hoe, wat je hebt gecontroleerd, en wat nog openstaat. Noem daarna de volgende plak.

@@ -1,62 +1,128 @@
 ---
 name: brainstorm-architect
-description: "Ontwerpt samen met de gebruiker het datamodel en, bij een frontend, de schermen, en bouwt daarna de eerste versie. Gebruik na /init-project, of wanneer de gebruiker entiteiten, relaties of schermen wil uitwerken voordat er code wordt geschreven."
+description: "Ontwerpsessie in rondes die het doel, de gebruikers, het datamodel, de API en bij een frontend de schermen van de applicatie uitdiept en vastlegt in docs/ontwerp.md en docs/bouwplan.md. Gebruik direct na /init-project, of wanneer de gebruiker de applicatie wil uitdenken, het ontwerp wil aanscherpen of een eerder gestarte ontwerpsessie wil hervatten."
 ---
+{%- set ronde_scope = 7 if frontend else 5 %}
+{%- set ronde_bouw = 8 if frontend else 6 %}
 
 # Brainstorm-architect
 
-De skill heeft twee delen. Schrijf in deel 1 geen code: het doel is een ontwerp waar de gebruiker akkoord op geeft. Bouw pas in deel 2.
+Dit is een ontwerpsessie. Schrijf in deze skill geen applicatiecode: de uitkomst is een ontwerp waar de gebruiker akkoord op heeft gegeven, zodat de structuur van {% if frontend %}frontend en backend{% else %}de backend{% endif %} vaststaat voordat er gebouwd wordt. Neem er de tijd voor; een uur aan vragen bespaart dagen aan ombouwen.
 
 ## Voorbereiding
 
-Lees `{{ context_file }}` en `README.md`. Staat het doel van de applicatie daar al, vraag er dan niet opnieuw naar. Ontbreekt het, start dan eerst `/init-project`.
+1. Bestaat `docs/ontwerp.md` al? Lees het en ga verder bij de eerste ronde die onder "Voortgang" niet is afgevinkt. Vat eerst in een paar zinnen samen wat al vaststaat.
+2. Bestaat het nog niet? Kopieer [references/ontwerp-sjabloon.md](references/ontwerp-sjabloon.md) uit deze skillmap naar `docs/ontwerp.md`.
+3. Lees `{{ context_file }}` voor de gekozen stack.
 
-Bekijk de bestaande modellen in `backend/app/models/`: die zijn gegenereerd als voorbeeld en hebben alleen `name` en `description`.
+## Zo voer je het gesprek
 
-## Deel 1: Ontwerpen
-
-Stel de vragen één voor één. Doe bij elke vraag een concreet voorstel op basis van het doel, zodat de gebruiker alleen hoeft te corrigeren. Loop deze onderwerpen langs:
-
-1. **Entiteiten en velden:** welke entiteiten zijn er, met welke velden en types? Welke velden zijn verplicht of uniek?
-2. **Relaties:** wat hoort bij wat (één-op-veel, veel-op-veel)? Wat gebeurt er met gekoppelde records bij verwijderen?
-3. **Statussen en regels:** zijn er statusvelden of overgangen die niet mogen?
-4. **Toegang:** moet er worden ingelogd, en mag iedereen alles zien en wijzigen?
-{%- if frontend %}
-5. **Schermen:** welke pagina's heeft de eerste versie, en wat kan de gebruiker op elke pagina doen?
-6. **Uitstraling:** welk kleurenpalet en welke sfeer? Bijvoorbeeld neutraal en strak, of donker met een accentkleur.
-{%- endif %}
+- **Eén vraag tegelijk.** Wacht op het antwoord voordat je de volgende stelt.
+- **Doe steeds een voorstel.** Leid uit wat je al weet een concreet antwoord af en leg dat voor, zodat de gebruiker alleen hoeft te corrigeren. Vanaf ronde 3 stel je zelf het ontwerp voor op basis van de eerdere rondes.
+- **Vraag door bij vage antwoorden.** "Gebruiksvriendelijk" of "beheer van klanten" is geen antwoord waar je op kunt bouwen. Vraag naar een voorbeeld: wie doet wat, en wat ziet die persoon daarna?
+- **Benoem aannames.** Vul je zelf iets in, zeg dat dan en noteer het onder "Open vragen en aannames".
+- **Houd de eerste versie klein.** Stel bij elke wens de vraag of die in de eerste versie moet. Wat afvalt komt in ronde {{ ronde_scope }} onder "buiten scope".
 {%- if assistant == "antigravity" %}
-
-Tip voor de gebruiker: met `/grill-me` stelt de assistent deze vragen als een interview.
+- Tip voor de gebruiker: met `/grill-me` stelt de assistent de vragen als een interview.
 {%- endif %}
 
-Sluit af met een samenvatting: een tabel met entiteiten, velden en relaties{% if frontend %}, en een lijst van schermen{% endif %}. Leg die na akkoord vast onder een kop "Datamodel" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}. Vraag daarna of je mag gaan bouwen.
+Sluit elke ronde zo af:
 
-## Deel 2: Bouwen
+1. Geef een samenvatting van wat is besloten.
+2. Vraag of het klopt en verwerk correcties.
+3. Schrijf de ronde weg in `docs/ontwerp.md` en vink hem af onder "Voortgang". Doe dit direct, niet pas aan het einde: zo gaat er niets verloren als de sessie wordt onderbroken.
 
-Bouw per entiteit de hele keten af voordat je aan de volgende begint.
+## Ronde 1: Doel
 
-### Backend
+Begin hier, ook als de gebruiker meteen over schermen of tabellen wil praten. Zonder helder doel valt niet te bepalen wat in de eerste versie hoort.
 
-1. Werk het model bij in `backend/app/models/` en importeer nieuwe modellen in `models/__init__.py`.
-2. Schrijf de schema's (`Create`, `Update`, `Response`) in `backend/app/schemas/`.
-3. Vervang het voorbeeld-endpoint met de lijst in het geheugen door echte queries, en registreer nieuwe routers in `backend/app/api/v1/router.py`. De skill `python-fastapi` beschrijft het patroon.
-4. Controleer het resultaat in http://localhost:8000/docs of met een test.
+- **Het idee:** wat wil de gebruiker maken, in eigen woorden?
+- **Het probleem:** welk probleem lost het op, en voor wie? Hoe wordt dat nu opgelost, en wat is daar mis mee?
+- **Succes:** wanneer is de applicatie geslaagd? Vraag door tot het toetsbaar is: "een monteur meldt een storing in minder dan een minuut" in plaats van "het werkt prettig".
 
-{% if database != "none" -%}
-Bestaande tabellen worden door `create_all` niet aangepast. Vraag bij een gewijzigd model of de ontwikkeldatabase opnieuw mag worden aangemaakt, of gebruik migraties.
-{%- else -%}
-Dit project is gegenereerd zonder database: `get_db` levert `None`. Bespreek met de gebruiker welke database er komt en richt die in voordat je queries schrijft.
-{%- endif %}
+Sluit af door het doel in drie zinnen in je eigen woorden terug te geven: wat het is, voor wie, en waaraan je ziet dat het werkt. Ga pas verder als de gebruiker dat bevestigt.
+
+Schrijf na akkoord ook een korte sectie "Doel & scope" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}, met het doel in twee of drie zinnen en de regel dat het volledige ontwerp in `docs/ontwerp.md` staat. Zet het ontwerp zelf daar niet in: dat bestand wordt elke sessie geladen.
+
+## Ronde 2: Gebruikers en stromen
+
+- **Rollen:** welke soorten gebruikers zijn er, en wat onderscheidt ze?
+- **Stromen:** wat doet elke rol het vaakst? Werk de twee of drie belangrijkste stromen stap voor stap uit: waar begint de gebruiker, wat vult hij in, wat ziet hij daarna?
+- **Uitzonderingen:** wat gebeurt er als iets ontbreekt, dubbel is of wordt afgekeurd?
+
+De stromen zijn de basis voor alles wat volgt. Een entiteit of scherm dat in geen enkele stroom voorkomt, hoort waarschijnlijk niet in de eerste versie.
+
+## Ronde 3: Datamodel
+
+Stel zelf een datamodel voor op basis van de stromen en loop het na:
+
+- **Entiteiten en velden:** naam, type, verplicht of optioneel, uniek?
+- **Relaties:** wat hoort bij wat (één-op-veel, veel-op-veel)? Wat gebeurt er met gekoppelde records als iets wordt verwijderd?
+- **Statussen:** welke statussen kent een record, en welke overgangen zijn toegestaan?
+- **Historie:** moet bewaard blijven wie iets heeft gewijzigd en wanneer?
+
+Controleer het model tegen de stromen uit ronde 2: kan elke stap met deze velden worden uitgevoerd?
+
+## Ronde 4: API en toegang
+
+- **Inloggen:** moeten gebruikers inloggen? Hoe krijgen ze een account?
+- **Endpoints:** stel per entiteit de endpoints voor (lijst, detail, aanmaken, wijzigen, verwijderen) en schrap wat geen stroom nodig heeft. Voeg acties toe die geen gewone CRUD zijn, zoals "goedkeuren".
+- **Rechten:** wie mag welk endpoint aanroepen, en mag een gebruiker alleen eigen records zien?
+- **Lijsten:** waar is zoeken, filteren, sorteren of pagineren nodig?
 {%- if frontend %}
 
-### Frontend
+## Ronde 5: Schermen
 
-1. Pas het thema aan via de CSS-variabelen in `frontend/src/assets/index.css` (`--primary`, `--background`, `--radius`).
-2. Installeer de benodigde Shadcn-Vue-componenten. De skill `vue-shadcn` beschrijft hoe.
-3. Genereer de API-types met `cd frontend && npm run generate:types` terwijl de backend draait.
-4. Bouw de views in `frontend/src/views/`, voeg ze toe aan `frontend/src/router/index.ts` en koppel ze aan de API via `@/services/api`.
-5. Controleer met `cd frontend && npm run lint && npm run build`.
+Stel een lijst van schermen voor op basis van de stromen en werk elk scherm uit:
+
+- **Route en doel:** op welk adres staat het, en waarvoor komt de gebruiker hier?
+- **Inhoud:** welke gegevens staan erop, en uit welk endpoint komen ze?
+- **Acties:** wat kan de gebruiker doen, en wat gebeurt er daarna?
+- **Toestanden:** wat ziet de gebruiker als er nog niets is, tijdens het laden en bij een fout?
+- **Toegang:** welke rollen mogen het scherm zien?
+
+Controleer dat elke stroom uit ronde 2 van begin tot eind over deze schermen loopt.
+
+## Ronde 6: Navigatie en uitstraling
+
+- **Navigatie:** hoe komt de gebruiker van scherm naar scherm? Een zijbalk, een bovenbalk, of alleen links tussen pagina's?
+- **Startpunt:** wat ziet een gebruiker direct na het inloggen of openen?
+- **Uitstraling:** welke sfeer en welk kleurenpalet? Vraag naar een voorbeeld van een applicatie die de gebruiker mooi vindt.
+- **Apparaten:** wordt het vooral op een telefoon, een tablet of een desktop gebruikt?
 {%- endif %}
 
-Meld na elke entiteit wat er werkt en wat nog openstaat.
+## Ronde {{ ronde_scope }}: Randvoorwaarden en scope
+
+- **Koppelingen:** zijn er externe systemen, API's of e-mail waarmee de applicatie moet werken?
+- **Omvang:** hoeveel gebruikers en records worden verwacht?
+- **Gegevens:** worden er persoonsgegevens of andere gevoelige gegevens opgeslagen?
+- **Buiten scope:** loop alle wensen langs die in eerdere rondes zijn uitgesteld en leg vast wat uitdrukkelijk niet in de eerste versie komt.
+
+## Ronde {{ ronde_bouw }}: Bouwvolgorde
+
+Verdeel de eerste versie in plakken. Een plak is één functie die van database tot {% if frontend %}scherm{% else %}endpoint{% endif %} werkt en die de gebruiker kan uitproberen.
+
+- Begin met de kleinste plak die de kern van de belangrijkste stroom laat zien.
+- Plan inloggen vroeg als andere plakken ervan afhangen.
+- Houd plakken klein: liever acht kleine dan drie grote.
+
+Schrijf de volgorde na akkoord naar `docs/bouwplan.md`:
+
+```markdown
+# Bouwplan
+
+- [ ] **1. <naam van de plak>:** <wat de gebruiker hierna kan>
+  - Entiteiten: <...>
+  - Endpoints: <...>
+{%- if frontend %}
+  - Schermen: <...>
+{%- endif %}
+- [ ] **2. <naam van de plak>:** <...>
+```
+
+## Afronden
+
+1. Lees `docs/ontwerp.md` in zijn geheel na op tegenstrijdigheden tussen de rondes en los die met de gebruiker op.
+2. Loop "Open vragen en aannames" langs: wat moet nu worden beslist, en wat kan wachten?
+3. Vervang de inleidende alinea van `README.md` door het doel. Laat de installatie- en startinstructies staan.
+4. Meld dat het ontwerp klaar is en dat het bouwen begint met `/feature-builder`.

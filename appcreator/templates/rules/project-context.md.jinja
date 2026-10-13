@@ -65,3 +65,7 @@ Dit project is gegenereerd met AppCreator CLI. De gekozen stack staat ook in `.a
 ## AI-skills
 
 Skills voor terugkerende taken staan in `{{ skills_dir }}/`. Begin een nieuw project met `/init-project`.
+{%- if backend %}
+
+De vaste volgorde is `/init-project`, dan `/brainstorm-architect` (ontwerpsessie) en daarna `/feature-builder` (bouwen per plak). Het ontwerp staat in `docs/ontwerp.md` en de bouwvolgorde in `docs/bouwplan.md` zodra de ontwerpsessie is gedaan. Lees die voordat je functies bouwt of wijzigt.
+{%- endif %}

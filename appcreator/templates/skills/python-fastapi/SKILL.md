@@ -18,7 +18,7 @@ description: "Werkwijze voor endpoints, schema's, modellen en dependencies in de
 | Endpoints | `backend/app/api/v1/endpoints/<entiteit>.py` |
 | Modellen en schema's | `backend/app/models/`, `backend/app/schemas/` |
 
-Alle routes staan onder `/api/v1`. De gegenereerde endpoints werken met een lijst in het geheugen; vervang die door het patroon hieronder.
+Alle routes staan onder `/api/v1`. Een nieuw project heeft alleen het health-endpoint; bouw nieuwe endpoints volgens het patroon hieronder. Het ontwerp van de applicatie staat in `docs/ontwerp.md` zodra de ontwerpsessie is gedaan.
 
 ## Een entiteit toevoegen of uitwerken
 

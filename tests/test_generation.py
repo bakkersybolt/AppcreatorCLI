@@ -201,16 +201,6 @@ def test_generate_backend_without_entity(tmp_dir):
     assert (target / "backend" / "app" / "schemas" / "__init__.py").is_file()
 
 
-def test_parse_entity_names():
-    from appcreator.main import parse_entity_names
-
-    assert parse_entity_names("custom: item, user, todo") == ["Item", "User", "Todo"]
-    assert parse_entity_names("Item, User, Todo") == ["Item", "User", "Todo"]
-    assert parse_entity_names("customer; order; ticket") == ["Customer", "Order", "Ticket"]
-    assert parse_entity_names("user_profile, order_item") == ["UserProfile", "OrderItem"]
-    assert parse_entity_names("") == []
-
-
 def test_generate_backend_with_multiple_entities(tmp_dir):
     app_naam = "MultiEntityBackend"
     target = tmp_dir / app_naam
@@ -472,8 +462,8 @@ def test_generate_for_antigravity_only_is_default(tmp_dir):
     frontend_rule = (target / ".agents" / "rules" / "frontend-rules.md").read_text()
     assert frontend_rule.startswith('---\ntrigger: glob\nglobs: "frontend/**/*"\n')
 
-    init_skill = (target / ".agents" / "skills" / "init-project" / "SKILL.md").read_text()
-    assert "/grill-me" in init_skill
+    brainstorm_skill = (target / ".agents" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
+    assert "/grill-me" in brainstorm_skill
     assert "Claude" not in _alle_tekst(target)
     assert load_manifest(target)["assistants"] == ["antigravity"]
 
@@ -486,9 +476,9 @@ def test_generate_for_both_assistants(tmp_dir):
     assert (target / ".agents" / "rules" / "project-context.md").is_file()
 
     for skills_dir in [".agents/skills", ".claude/skills"]:
-        init_skill = (target / skills_dir / "init-project" / "SKILL.md").read_text()
+        brainstorm_skill = (target / skills_dir / "brainstorm-architect" / "SKILL.md").read_text()
         # Het doel moet in beide contextbestanden terechtkomen, anders lopen ze uiteen
-        assert "`.agents/rules/project-context.md` en `CLAUDE.md`" in init_skill
+        assert "`.agents/rules/project-context.md` en `CLAUDE.md`" in brainstorm_skill
 
     assert "/grill-me" in (target / ".agents" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
     assert "/grill-me" not in (target / ".claude" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
@@ -549,7 +539,10 @@ def test_optional_skills_are_filtered_per_category():
     assert namen("cli") == ["test-engineer", "code-reviewer"]
     assert "database-architect" in namen("fullstack", "postgres")
     assert "database-architect" not in namen("backend", "none")
-    assert "brainstorm-architect" in namen("backend", "none")
+    # De ontwerpsessie is geen keuze meer: web en backend krijgen hem altijd
+    assert "brainstorm-architect" not in namen("fullstack", "postgres")
+    assert skill_past_bij_project("brainstorm-architect", "backend", {"backend": "fastapi"})
+    assert skill_past_bij_project("feature-builder", "fullstack", {"backend": "fastapi", "frontend": "vue3"})
 
     assert skill_past_bij_project("init-project", "embedded", {"hardware": "esp32"})
     assert skill_past_bij_project("esp32-development", "embedded", {"hardware": "esp32"})
@@ -568,4 +561,92 @@ def test_templates_follow_their_own_rules(tmp_dir):
     gitignore = (target / ".gitignore").read_text().splitlines()
     assert "lib/" not in gitignore
     assert "include/secrets.h" in gitignore
+
+
+RONDES_FULLSTACK = [
+    "## Ronde 1: Doel",
+    "## Ronde 2: Gebruikers en stromen",
+    "## Ronde 3: Datamodel",
+    "## Ronde 4: API en toegang",
+    "## Ronde 5: Schermen",
+    "## Ronde 6: Navigatie en uitstraling",
+    "## Ronde 7: Randvoorwaarden en scope",
+    "## Ronde 8: Bouwvolgorde",
+]
+
+
+def test_design_session_is_always_installed_for_web_and_backend(tmp_dir):
+    web = tmp_dir / "Web"
+    assemble_project("Web", "fullstack", {"backend": "fastapi", "frontend": "vue3", "database": "postgres"}, [], web, assistants=["claude"])
+    api = tmp_dir / "Api"
+    assemble_project("Api", "backend", {"backend": "fastapi", "database": "sqlite"}, [], api, assistants=["claude"])
+
+    for project in (web, api):
+        skills = project / ".claude" / "skills"
+        assert (skills / "brainstorm-architect" / "SKILL.md").is_file()
+        assert (skills / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").is_file()
+        assert (skills / "feature-builder" / "SKILL.md").is_file()
+        assert {"brainstorm-architect", "feature-builder"} <= set(load_manifest(project)["skills"])
+
+    for category, stack in [("embedded", {"hardware": "esp32"}), ("cli", {"cli": "python-typer"})]:
+        target = tmp_dir / category
+        assemble_project(category, category, stack, [], target, assistants=["claude"])
+        assert not (target / ".claude" / "skills" / "brainstorm-architect").exists()
+        assert not (target / ".claude" / "skills" / "feature-builder").exists()
+
+
+def test_brainstorm_rounds_start_with_goal_and_follow_the_stack(tmp_dir):
+    web = tmp_dir / "Web"
+    assemble_project("Web", "fullstack", {"backend": "fastapi", "frontend": "vue3", "database": "postgres"}, [], web, assistants=["claude"])
+    skill = (web / ".claude" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
+
+    posities = [skill.index(kop) for kop in RONDES_FULLSTACK]
+    assert posities == sorted(posities)
+    eerste_ronde = skill[posities[0]:posities[1]]
+    for onderwerp in ["Het idee", "Het probleem", "Succes"]:
+        assert onderwerp in eerste_ronde
+    assert "docs/ontwerp.md" in skill and "docs/bouwplan.md" in skill and "/feature-builder" in skill
+
+    sjabloon = (web / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
+    assert "# Ontwerp: Web" in sjabloon
+    assert "## 5. Schermen" in sjabloon and "## 7. Randvoorwaarden en scope" in sjabloon
+
+    api = tmp_dir / "Api"
+    assemble_project("Api", "backend", {"backend": "fastapi", "database": "sqlite"}, [], api, assistants=["claude"])
+    api_skill = (api / ".claude" / "skills" / "brainstorm-architect" / "SKILL.md").read_text()
+    assert "## Ronde 5: Randvoorwaarden en scope" in api_skill
+    assert "## Ronde 6: Bouwvolgorde" in api_skill
+    assert "Schermen" not in api_skill and "Navigatie" not in api_skill
+
+    api_sjabloon = (api / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
+    assert "## 5. Randvoorwaarden en scope" in api_sjabloon
+    assert "Schermen" not in api_sjabloon and "Navigatie" not in api_sjabloon
+    assert "- [ ] 6. Bouwvolgorde" in api_sjabloon and "- [ ] 7." not in api_sjabloon
+
+    api_builder = (api / ".claude" / "skills" / "feature-builder" / "SKILL.md").read_text()
+    assert "## Stap 3: Afronden" in api_builder and "Frontend" not in api_builder
+
+
+def test_init_project_hands_over_to_design_session_for_web_only(tmp_dir):
+    web = tmp_dir / "Web"
+    assemble_project("Web", "fullstack", {"backend": "fastapi", "frontend": "vue3", "database": "sqlite"}, [], web, assistants=["claude"])
+    web_init = (web / ".claude" / "skills" / "init-project" / "SKILL.md").read_text()
+    assert ".claude/skills/brainstorm-architect/SKILL.md" in web_init
+    assert "Intake" not in web_init and "hoofddoel" not in web_init.lower()
+
+    cli = tmp_dir / "Cli"
+    assemble_project("Cli", "cli", {"cli": "python-typer"}, [], cli, assistants=["claude"])
+    cli_init = (cli / ".claude" / "skills" / "init-project" / "SKILL.md").read_text()
+    assert "## Stap 2: Intake" in cli_init
+    assert "brainstorm-architect" not in cli_init
+
+
+def test_new_backend_without_entities_has_only_health_endpoint(tmp_dir):
+    target = tmp_dir / "Leeg"
+    assemble_project("Leeg", "backend", {"backend": "fastapi", "database": "postgres"}, [], target, assistants=["claude"])
+
+    endpoints = sorted(p.name for p in (target / "backend" / "app" / "api" / "v1" / "endpoints").glob("*.py"))
+    assert endpoints == ["health.py"]
+    assert "voorbeelden met een lijst in het geheugen" not in (target / "CLAUDE.md").read_text()
+    assert "docs/ontwerp.md" in (target / "CLAUDE.md").read_text()
 

@@ -56,10 +56,6 @@ def print_summary_card(project_data: dict):
         table.add_row("Hardware / Embedded", project_data["hardware"])
     if "database" in project_data and project_data["database"]:
         table.add_row("Database", project_data["database"])
-    if "entiteiten" in project_data and project_data["entiteiten"]:
-        table.add_row("Entiteiten", ", ".join(project_data["entiteiten"]))
-    elif "kern_domein" in project_data and project_data["kern_domein"]:
-        table.add_row("Entiteit", project_data["kern_domein"])
 
     assistants = normalize_assistants(project_data.get("assistants"))
     table.add_row("AI-assistent", join_namen([ASSISTANTS[key].naam for key in assistants]))
@@ -95,7 +91,7 @@ def print_success_card(app_naam: str, doel_pad: str, installed_skills: list, ass
         f"     [bold cyan]appcreator dev[/bold cyan]  (of [cyan]./dev.sh[/cyan])\n\n"
         f"  3. Open het project in je AI-assistent:\n"
         f"{open_text}\n\n"
-        f"  4. Voer in de chat de startskill uit om de intake te starten:\n"
+        f"  4. Voer in de chat de startskill uit; bij een web- of backendproject volgt daarna de ontwerpsessie:\n"
         f"     [bold yellow]/init-project[/bold yellow]\n"
     )
 

@@ -11,13 +11,15 @@ AppCreator stelt je in staat om via een interactieve terminal wizard binnen enke
 - **🎯 Categorie-gestuurde Wizard:** Kies uit 4 kernarchetypes met alleen de relevante vervolgvragen.
 - **🧱 Volledig Modulaire Lagen:** Geen starre sjablonen, maar herbruikbare backend, frontend, database en AI-lagen samengesteld met Jinja2.
 - **🤖 Geïntegreerde AI-Skills:** alleen de skills die bij het projecttype passen worden aangeboden.
-  - **`init-project`:** startskill die de lokale omgeving controleert en doel en scope vastlegt.
-  - **`brainstorm-architect`:** ontwerpt met jou het datamodel en de schermen en bouwt daarna de eerste versie (web en backend).
+  - **`init-project`:** startskill die de lokale omgeving controleert.
+  - **`brainstorm-architect`:** ontwerpsessie in rondes (doel, gebruikers, datamodel, API, schermen) met als uitkomst `docs/ontwerp.md` en `docs/bouwplan.md`. Standaard bij web en backend.
+  - **`feature-builder`:** bouwt de applicatie plak voor plak volgens het bouwplan. Standaard bij web en backend.
   - **`test-engineer`:** zet de testomgeving op en schrijft tests met Pytest en Vitest.
   - **`code-reviewer`:** beoordeelt wijzigingen op fouten, security, types en architectuur.
   - **`database-architect`:** schema-ontwerp en Alembic-migraties (bij een database).
   - **`docker-devops`:** Docker Compose, debuggen van containers en productie-images.
   - **Stack-skills** (`python-fastapi`, `vue-shadcn`, `esp32-development`) worden automatisch toegevoegd.
+  - `test-engineer`, `code-reviewer`, `database-architect` en `docker-devops` zijn optioneel.
 - **⚡ Slimme Tooling & Snelheid:**
   - Automatische detectie van `uv` voor razendsnelle Python installaties.
   - Detectie van `npm`/`pnpm` voor frontend installaties.
@@ -108,7 +110,15 @@ Zodra je project is aangemaakt:
    ```text
    /init-project
    ```
-   De assistent controleert je omgeving, stelt drie intakevragen en legt het doel vast in de README en de projectcontext. Bij een web- of backendproject kun je daarna door met `/brainstorm-architect`.
+   De assistent controleert je omgeving. Bij een web- of backendproject gaat hij daarna direct door met de ontwerpsessie:
+
+   | Stap | Skill | Uitkomst |
+   | :--- | :--- | :--- |
+   | 1 | `/init-project` | Werkende ontwikkelomgeving |
+   | 2 | `/brainstorm-architect` | `docs/ontwerp.md` en `docs/bouwplan.md`: doel, gebruikers, datamodel, API en schermen |
+   | 3 | `/feature-builder` | De applicatie, plak voor plak gebouwd en afgevinkt in het bouwplan |
+
+   De ontwerpsessie begint bij het doel: wat is het idee, welk probleem lost het op en wanneer is de applicatie geslaagd. Een onderbroken sessie gaat verder waar hij was gebleven. Bij een ESP32- of CLI-project stelt `/init-project` zelf drie intakevragen.
 
 De inhoud van regels en skills komt uit één bron in `appcreator/templates/rules/` en `appcreator/templates/skills/`. De frontmatter per assistent staat in `appcreator/core/assistants.py`.
 
@@ -146,7 +156,7 @@ AppcreatorCLI/
 │       ├── embedded/esp32/    # Werkende PlatformIO ESP32 firmware
 │       ├── cli/python-typer/  # Werkende Python CLI boilerplate
 │       ├── rules/             # Regelteksten (zonder frontmatter, die komt per assistent)
-│       └── skills/            # Skillcatalogus (9 skills, SKILL.md of SKILL.md.jinja)
+│       └── skills/            # Skillcatalogus (10 skills, SKILL.md of SKILL.md.jinja)
 └── tests/
     ├── test_cli.py            # Tests voor de CLI commando's
     └── test_generation.py     # End-to-end tests voor alle projecttypen

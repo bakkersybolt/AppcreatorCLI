@@ -1,11 +1,11 @@
 ---
 name: init-project
-description: "Intake voor een nieuw gegenereerd project: controleert de ontwikkelomgeving en legt doel en scope vast in de README en de projectcontext. Gebruik direct na het genereren van het project, of wanneer de gebruiker /init-project typt of vraagt om het project op te starten."
+description: "Startpunt voor een nieuw gegenereerd project: controleert de ontwikkelomgeving en start daarna de ontwerpsessie of de intake. Gebruik direct na het genereren van het project, of wanneer de gebruiker /init-project typt of vraagt om het project op te starten."
 ---
 
 # Init-project
 
-Doorloop de stappen in volgorde. Stel de intakevragen pas na de omgevingscontrole.
+Doorloop de stappen in volgorde.
 
 ## Stap 1: Omgeving controleren
 
@@ -33,6 +33,14 @@ Doorloop de stappen in volgorde. Stel de intakevragen pas na de omgevingscontrol
 {%- if backend or frontend %}
 4. Meld dat het project lokaal start met `appcreator dev` (of `./dev.sh`).
 {%- endif %}
+{%- if backend %}
+
+## Stap 2: Door naar de ontwerpsessie
+
+Stel hier geen vragen over het doel van de applicatie: dat is de eerste ronde van de ontwerpsessie.
+
+Ga direct door met de skill `brainstorm-architect` (`{{ skills_dir }}/brainstorm-architect/SKILL.md`). Die diept in rondes het doel, de gebruikers, het datamodel, de API{% if frontend %} en de schermen{% endif %} uit en legt het ontwerp vast in `docs/ontwerp.md`. Bouw geen functies voordat dat ontwerp er is.
+{%- else %}
 
 ## Stap 2: Intake
 
@@ -42,12 +50,9 @@ Stel deze drie vragen in één bericht en wacht op het antwoord:
 {%- if hardware %}
 2. **Wat meet of bestuurt het apparaat?** Welke sensoren, actuatoren en verbindingen (wifi, MQTT, serieel) zijn er?
 3. **Wat zijn de randvoorwaarden?** Bijvoorbeeld batterijvoeding, meetinterval of een bestaand backend-systeem.
-{%- elif cli %}
+{%- else %}
 2. **Welke twee of drie commando's moet de tool als eerste hebben?** Wat is de invoer en de uitvoer van elk?
 3. **Zijn er bijzondere wensen?** Bijvoorbeeld configuratiebestanden, externe API's of uitvoer als JSON.
-{%- else %}
-2. **Wat is de kern van de eerste versie?** Welke twee of drie acties moet een gebruiker direct kunnen uitvoeren?
-3. **Zijn er bijzondere wensen?** Bijvoorbeeld inloggen en rollen, koppelingen met externe API's of realtime updates.
 {%- endif %}
 
 Vraag door als een antwoord te vaag is om een eerste versie af te bakenen.
@@ -71,12 +76,5 @@ Vraag door als een antwoord te vaag is om een eerste versie af te bakenen.
 
 ## Stap 4: Vervolg
 
-Vat in twee zinnen samen wat er is vastgelegd.
-{% if backend %}
-Bestaat de skill `brainstorm-architect` in `{{ skills_dir }}/`? Stel dan voor om daarmee het datamodel{% if frontend %} en de schermen{% endif %} uit te werken (`/brainstorm-architect`). Het doel en de doelgroep zijn al bekend en hoeven daar niet opnieuw gevraagd te worden.
-{%- if assistant == "antigravity" %} Tip voor de gebruiker: met `/grill-me` verloopt die sessie als een interview.{% endif %}
-
-Bestaat die skill niet, vraag dan welke functie uit de eerste versie als eerste gebouwd moet worden.
-{% else %}
-Vraag welke functie uit de eerste versie als eerste gebouwd moet worden en stel een eerste stap voor.
-{% endif %}
+Vat in twee zinnen samen wat er is vastgelegd. Vraag welke functie uit de eerste versie als eerste gebouwd moet worden en stel een eerste stap voor.
+{%- endif %}
