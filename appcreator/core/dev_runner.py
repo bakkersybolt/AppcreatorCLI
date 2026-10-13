@@ -24,6 +24,20 @@ def _stream_output(stream, prefix: str):
         pass
 
 
+def _get_postgres_port(target_dir: Path) -> str:
+    """Returns the host port for PostgreSQL: environment variable, then root .env, then 5432."""
+    port = os.environ.get("POSTGRES_PORT")
+    if port:
+        return port
+    env_file = target_dir / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.strip().partition("=")
+            if sep and key.strip() == "POSTGRES_PORT" and value.strip():
+                return value.strip().strip("'\"")
+    return "5432"
+
+
 def run_dev_server(project_dir: Optional[Path] = None):
     """Starts local development services (docker database, backend, frontend) with unified logs."""
     target_dir = (project_dir or Path.cwd()).resolve()
@@ -46,6 +60,8 @@ def run_dev_server(project_dir: Optional[Path] = None):
         )
         return
 
+    postgres_port = _get_postgres_port(target_dir)
+
     # 1. Database (PostgreSQL via Docker Compose)
     if has_postgres and (target_dir / "docker-compose.yml").is_file():
         if shutil.which("docker"):
@@ -59,13 +75,14 @@ def run_dev_server(project_dir: Optional[Path] = None):
                     text=True,
                 )
                 if res.returncode == 0:
-                    console.print("[bold yellow][database][/bold yellow] PostgreSQL container is actief op poort 5432.")
+                    console.print(f"[bold yellow][database][/bold yellow] PostgreSQL container is actief op poort {postgres_port}.")
                 else:
                     err_output = (res.stderr or res.stdout or "").strip()
                     if "port is already allocated" in err_output or "address already in use" in err_output:
                         print_warning(
-                            "Poortconflict gedetecteerd: Poort 5432 is al in gebruik door een andere container of service!\n"
-                            "Controleer met 'docker ps' welke container op poort 5432 draait (bijv. 'docker stop <naam>')."
+                            f"Poortconflict gedetecteerd: Poort {postgres_port} is al in gebruik door een andere container of service!\n"
+                            f"Controleer met 'docker ps' welke container op poort {postgres_port} draait (bijv. 'docker stop <naam>'), "
+                            "of kies een andere POSTGRES_PORT in de .env in de projectroot (en pas DATABASE_URL in backend/.env aan)."
                         )
                     else:
                         console.print(f"[dim red]Kon database container niet starten: {err_output}[/dim red]")
@@ -153,7 +170,7 @@ def run_dev_server(project_dir: Optional[Path] = None):
         details.append("• [bold cyan]Backend API:[/]   http://localhost:8000")
         details.append("• [bold cyan]API Docs:[/]      http://localhost:8000/docs")
     if has_postgres:
-        details.append("• [bold yellow]Database:[/]      PostgreSQL op localhost:5432")
+        details.append(f"• [bold yellow]Database:[/]      PostgreSQL op localhost:{postgres_port}")
     details.append("\n[dim]Druk op Ctrl+C om alle services gelijktijdig te stoppen.[/dim]")
 
     console.print()

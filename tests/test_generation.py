@@ -256,3 +256,161 @@ def test_generate_backend_with_multiple_entities(tmp_dir):
     assert 'api_router.include_router(todo.router, prefix="/todos", tags=["Todos"])' in router_code
 
 
+def test_cli_project_name_with_space_gives_valid_package(tmp_dir):
+    app_naam = "Mijn App"
+    target = tmp_dir / app_naam
+
+    assemble_project(
+        app_naam=app_naam,
+        category="cli",
+        stack={"cli": "python-typer"},
+        skills=[],
+        target_dir=target,
+    )
+
+    assert (target / "src" / "mijn_app" / "main.py").is_file()
+    assert not (target / "src" / "mijn-app").exists()
+
+    pyproject = (target / "pyproject.toml").read_text()
+    assert 'name = "mijn-app"' in pyproject
+    assert 'mijn-app = "mijn_app.main:app"' in pyproject
+    assert "pytest" in pyproject
+
+    test_code = (target / "tests" / "test_cli.py").read_text()
+    assert "from mijn_app.main import app" in test_code
+
+
+@pytest.mark.parametrize(
+    "category, stack",
+    [
+        ("fullstack", {"backend": "fastapi", "frontend": "vue3", "database": "postgres", "entiteiten": ["Item", "User"]}),
+        ("backend", {"backend": "fastapi", "database": "sqlite", "entiteiten": ["Sensor"]}),
+        ("backend", {"backend": "fastapi", "database": "none", "entiteiten": []}),
+        ("embedded", {"hardware": "esp32"}),
+        ("cli", {"cli": "python-typer"}),
+    ],
+)
+def test_generated_python_compiles_and_has_no_template_leftovers(tmp_dir, category, stack):
+    target = tmp_dir / "Mijn Test App"
+
+    assemble_project(
+        app_naam="Mijn Test App",
+        category=category,
+        stack=stack,
+        skills=["brainstorm-architect", "test-engineer", "code-reviewer", "database-architect", "docker-devops"],
+        target_dir=target,
+    )
+
+    for py_file in target.rglob("*.py"):
+        compile(py_file.read_text(encoding="utf-8"), str(py_file), "exec")
+
+    assert not list(target.rglob("*.jinja"))
+    assert "Mijn Test App" in (target / "README.md").read_text()
+
+
+def test_frontend_files_rendered_with_slug(tmp_dir):
+    target = tmp_dir / "Mijn Web_App"
+
+    assemble_project(
+        app_naam="Mijn Web_App",
+        category="fullstack",
+        stack={"backend": "fastapi", "frontend": "vue3", "database": "sqlite", "entiteiten": []},
+        skills=[],
+        target_dir=target,
+    )
+
+    package = json.loads((target / "frontend" / "package.json").read_text())
+    assert package["name"] == "mijn-web-app-frontend"
+    assert "vitest" in package["devDependencies"]
+    assert (target / "frontend" / "eslint.config.ts").is_file()
+    assert not (target / "frontend" / ".eslintrc.config.ts").exists()
+    assert "Mijn Web_App" in (target / "frontend" / "README.md").read_text()
+    assert "Mijn Web_App" in (target / "backend" / "app" / "__init__.py").read_text()
+
+
+def test_root_env_with_postgres_port_only_for_postgres(tmp_dir):
+    pg_target = tmp_dir / "PgApp"
+    assemble_project(
+        app_naam="PgApp",
+        category="backend",
+        stack={"backend": "fastapi", "database": "postgres", "entiteiten": []},
+        skills=[],
+        target_dir=pg_target,
+    )
+    assert "POSTGRES_PORT=5432" in (pg_target / ".env").read_text()
+    assert "POSTGRES_PORT=5432" in (pg_target / ".env.example").read_text()
+    assert "${POSTGRES_PORT:-5432}:5432" in (pg_target / "docker-compose.yml").read_text()
+    assert "POSTGRES_PORT=" not in (pg_target / "backend" / ".env").read_text()
+
+    sqlite_target = tmp_dir / "SqliteApp"
+    assemble_project(
+        app_naam="SqliteApp",
+        category="backend",
+        stack={"backend": "fastapi", "database": "sqlite", "entiteiten": []},
+        skills=[],
+        target_dir=sqlite_target,
+    )
+    assert not (sqlite_target / ".env").exists()
+
+
+def test_dev_runner_reads_postgres_port(tmp_dir, monkeypatch):
+    from appcreator.core.dev_runner import _get_postgres_port
+
+    monkeypatch.delenv("POSTGRES_PORT", raising=False)
+    assert _get_postgres_port(tmp_dir) == "5432"
+
+    (tmp_dir / ".env").write_text("# commentaar\nPOSTGRES_PORT=5433\n")
+    assert _get_postgres_port(tmp_dir) == "5433"
+
+    monkeypatch.setenv("POSTGRES_PORT", "6000")
+    assert _get_postgres_port(tmp_dir) == "6000"
+
+
+def test_non_jinja_file_is_copied_unchanged(tmp_dir):
+    from appcreator.core.generator import render_file
+
+    src = tmp_dir / "Component.vue"
+    src.write_text("<template>{{ teller }}</template>\n")
+    dst = tmp_dir / "out" / "Component.vue"
+
+    render_file(src, dst, {})
+
+    assert dst.read_text() == "<template>{{ teller }}</template>\n"
+
+
+def test_unknown_template_variable_raises(tmp_dir):
+    import jinja2
+    from appcreator.core.generator import render_file
+
+    src = tmp_dir / "kapot.txt.jinja"
+    src.write_text("Hallo {{ bestaat_niet }}\n")
+
+    with pytest.raises(jinja2.UndefinedError):
+        render_file(src, tmp_dir / "kapot.txt", {"app_naam": "X"})
+
+
+def test_validate_app_name():
+    from appcreator.core.naming import make_package_name, make_slug, validate_app_name
+
+    for geldig in ["MijnApp", "Mijn App", "mijn-app_2"]:
+        assert validate_app_name(geldig) is None
+    for ongeldig in ["", "   ", "../x", "a/b", "1app", "app!", ".."]:
+        assert validate_app_name(ongeldig) is not None
+
+    assert make_slug("Mijn Web_App") == "mijn-web-app"
+    assert make_package_name("Mijn Web_App") == "mijn_web_app"
+
+
+def test_python_setup_installs_pyproject_project_editable(tmp_dir, monkeypatch):
+    from appcreator.core import installer
+
+    (tmp_dir / "pyproject.toml").write_text("[project]\nname = 'x'\n")
+    calls = []
+    monkeypatch.setattr(installer.subprocess, "run", lambda cmd, **kwargs: calls.append(cmd))
+
+    assert installer.setup_python_environment(target_dir=tmp_dir, requirements_path=None) is True
+
+    install_calls = [c for c in calls if "install" in c]
+    assert len(install_calls) == 1
+    assert install_calls[0][install_calls[0].index("-e") + 1] == ".[dev]"
+

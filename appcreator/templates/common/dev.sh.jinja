@@ -14,6 +14,13 @@ trap cleanup EXIT INT TERM
 echo "🚀 AppCreator Dev Server starten voor {{ app_naam }}..."
 
 {% if database == "postgres" %}
+# Lees POSTGRES_PORT uit de .env in de projectroot (dezelfde die Docker Compose gebruikt)
+if [ -f .env ]; then
+    set -a
+    . ./.env
+    set +a
+fi
+
 # 1. Database (PostgreSQL) starten via Docker
 if command -v docker &> /dev/null && [ -f docker-compose.yml ]; then
     echo "📦 PostgreSQL container starten..."
@@ -57,7 +64,7 @@ echo "   • Backend API:   http://localhost:8000"
 echo "   • API Docs:      http://localhost:8000/docs"
 {% endif %}
 {% if database == "postgres" %}
-echo "   • PostgreSQL:    localhost:5432"
+echo "   • PostgreSQL:    localhost:${POSTGRES_PORT:-5432}"
 {% endif %}
 echo "   Druk op Ctrl+C om alle services te stoppen."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -1,8 +1,6 @@
 """AppCreator CLI - AI-Ready Project Scaffolding Tool."""
 
-import os
 import re
-import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -14,6 +12,7 @@ from appcreator.core.detector import detect_system_tools
 from appcreator.core.generator import TEMPLATES_DIR, assemble_project, copy_skill
 from appcreator.core.installer import init_git_repository, setup_node_environment, setup_python_environment
 from appcreator.core.manifest import add_skill_to_manifest, load_manifest
+from appcreator.core.naming import make_slug, validate_app_name
 from appcreator.ui import (
     console,
     print_banner,
@@ -123,13 +122,15 @@ def create(
         app_naam = questionary.text(
             "Wat is de naam van je nieuwe applicatie?",
             default="MijnNieuweApp",
+            validate=lambda tekst: validate_app_name(tekst) or True,
         ).ask()
 
-    if not app_naam:
-        print_error("Geen applicatienaam opgegeven. Setup afgebroken.")
+    naam_fout = validate_app_name(app_naam or "")
+    if naam_fout:
+        print_error(f"{naam_fout} Setup afgebroken.")
         raise typer.Exit(1)
 
-    app_slug = app_naam.lower().replace(" ", "-").replace("_", "-")
+    app_naam = app_naam.strip()
     doel_pad = Path.cwd() / app_naam
 
     if doel_pad.exists() and any(doel_pad.iterdir()):
@@ -268,22 +269,42 @@ def create(
                 req_path = doel_pad / "backend" / "requirements.txt"
                 if not req_path.exists() and (doel_pad / "requirements.txt").exists():
                     req_path = doel_pad / "requirements.txt"
-                setup_python_environment(
-                    target_dir=doel_pad / "backend" if (doel_pad / "backend").exists() else doel_pad,
+                python_dir = doel_pad / "backend" if (doel_pad / "backend").exists() else doel_pad
+                python_ok = setup_python_environment(
+                    target_dir=python_dir,
                     requirements_path=req_path if req_path.exists() else None,
                 )
-            console.print("[green]✓[/green] Python venv gereed.")
+            if python_ok:
+                console.print("[green]✓[/green] Python venv gereed.")
+            else:
+                install_cmd = "pip install -r requirements.txt" if req_path.exists() else 'pip install -e ".[dev]"'
+                print_warning(
+                    "Python dependencies zijn niet (volledig) geïnstalleerd. Voer dit later handmatig uit:\n"
+                    f"cd {python_dir} && python3 -m venv .venv && .venv/bin/{install_cmd}"
+                )
 
         if stack_config.get("frontend"):
             with console.status("[bold cyan]Frontend dependencies installeren via npm...", spinner="dots"):
-                setup_node_environment(doel_pad / "frontend")
-            console.print("[green]✓[/green] Frontend dependencies gereed.")
+                node_ok = setup_node_environment(doel_pad / "frontend")
+            if node_ok:
+                console.print("[green]✓[/green] Frontend dependencies gereed.")
+            else:
+                print_warning(
+                    "Frontend dependencies zijn niet geïnstalleerd. Voer dit later handmatig uit:\n"
+                    f"cd {doel_pad / 'frontend'} && npm install"
+                )
 
     # Optionele Git init
     if init_git:
         with console.status("[bold cyan]Git repository initialiseren...", spinner="dots"):
-            init_git_repository(doel_pad, initial_commit=True)
-        console.print("[green]✓[/green] Git repository geïnitialiseerd met eerste commit.")
+            git_ok = init_git_repository(doel_pad, initial_commit=True)
+        if git_ok:
+            console.print("[green]✓[/green] Git repository geïnitialiseerd met eerste commit.")
+        else:
+            print_warning(
+                "Git repository is niet (volledig) geïnitialiseerd. Voer dit later handmatig uit:\n"
+                f"cd {doel_pad} && git init && git add . && git commit -m 'chore: initial commit'"
+            )
 
     # Resultaat & instructies
     alle_skills = sorted(list(set(["init-project"] + gekozen_skills)))
@@ -372,7 +393,7 @@ def add_skill(
 
     context = manifest or {
         "app_naam": project_dir.name,
-        "app_slug": project_dir.name.lower(),
+        "app_slug": make_slug(project_dir.name),
         "backend": "fastapi",
         "frontend": "vue3",
     }

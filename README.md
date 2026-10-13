@@ -121,21 +121,24 @@ pytest -v tests/
 ```text
 AppcreatorCLI/
 ├── appcreator/
-│   ├── main.py                # Typer CLI commando's (create, list, add-skill, info)
+│   ├── main.py                # Typer CLI commando's (create, list, add-skill, info, dev, start)
 │   ├── ui.py                  # Rich styling, banners, tabellen en voortgang
-│   └── core/
-│       ├── generator.py       # Modulaire Jinja2 rendering & lagen-assembler
-│       ├── detector.py        # Systeemdetectie (uv, npm, pnpm, git, docker)
-│       ├── manifest.py        # .appcreator.json beheer
-│       └── installer.py       # Automatische dependency installatie & git init
-├── templates/
-│   ├── common/                # Universele bestanden (.gitignore, README, docker-compose)
-│   ├── backends/fastapi/      # Werkende FastAPI backend boilerplate
-│   ├── frontends/vue3/        # Werkende Vue 3 + Tailwind + Shadcn frontend
-│   ├── embedded/esp32/        # Werkende PlatformIO ESP32 firmware
-│   ├── cli/python-typer/      # Werkende Python CLI boilerplate
-│   ├── rules/                 # Centrale .agents/rules regels
-│   └── skills/                # Centrale .agents/skills catalogus (9 skills)
+│   ├── core/
+│   │   ├── generator.py       # Modulaire Jinja2 rendering, lagen-assembler & docker-compose
+│   │   ├── naming.py          # Slug, Python-packagenaam en validatie van de applicatienaam
+│   │   ├── detector.py        # Systeemdetectie (uv, npm, pnpm, git, docker)
+│   │   ├── manifest.py        # .appcreator.json beheer
+│   │   ├── installer.py       # Automatische dependency installatie & git init
+│   │   └── dev_runner.py      # Lokale dev-services met gecombineerde logs
+│   └── templates/             # Wordt meegeleverd in het package (alleen *.jinja wordt gerenderd)
+│       ├── common/            # Universele bestanden (.gitignore, README, dev.sh)
+│       ├── backends/fastapi/  # Werkende FastAPI backend boilerplate
+│       ├── frontends/vue3/    # Werkende Vue 3 + Tailwind + Shadcn frontend
+│       ├── embedded/esp32/    # Werkende PlatformIO ESP32 firmware
+│       ├── cli/python-typer/  # Werkende Python CLI boilerplate
+│       ├── rules/             # Centrale .agents/rules regels
+│       └── skills/            # Centrale .agents/skills catalogus (9 skills)
 └── tests/
+    ├── test_cli.py            # Tests voor de CLI commando's
     └── test_generation.py     # End-to-end tests voor alle projecttypen
 ```

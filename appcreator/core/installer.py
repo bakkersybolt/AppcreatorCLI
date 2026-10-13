@@ -3,24 +3,44 @@
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
-from appcreator.core.detector import detect_system_tools, get_preferred_python_installer, get_preferred_node_installer
+from typing import List, Optional
+from appcreator.core.detector import detect_system_tools, get_preferred_node_installer
 from appcreator.ui import console
 
 
+def _format_process_error(error: subprocess.CalledProcessError) -> str:
+    """Returns the command and the last lines of its stderr/stdout for a failed subprocess."""
+    output = error.stderr or error.stdout or b""
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    tail = "\n".join(output.strip().splitlines()[-8:])
+    command = " ".join(str(part) for part in error.cmd)
+    return f"'{command}' eindigde met exit code {error.returncode}\n{tail}".rstrip()
+
+
 def setup_python_environment(target_dir: Path, requirements_path: Optional[Path] = None) -> bool:
-    """Sets up Python virtual environment and installs dependencies using uv if available, else venv+pip."""
+    """Sets up Python virtual environment and installs dependencies using uv if available, else venv+pip.
+
+    Installs from requirements_path when given; otherwise installs the project itself in
+    editable mode (with its 'dev' extra) when target_dir contains a pyproject.toml.
+    """
     tools = detect_system_tools()
     python_cmd = "python3" if tools["python3"] else sys.executable
     venv_dir = target_dir / ".venv"
+
+    install_args: List[str] = []
+    if requirements_path and requirements_path.exists():
+        install_args = ["-r", str(requirements_path)]
+    elif (target_dir / "pyproject.toml").exists():
+        install_args = ["-e", ".[dev]"]
 
     try:
         if tools["uv"]:
             # uv venv is near-instantaneous
             subprocess.run(["uv", "venv", str(venv_dir)], check=True, cwd=str(target_dir), capture_output=True)
-            if requirements_path and requirements_path.exists():
+            if install_args:
                 subprocess.run(
-                    ["uv", "pip", "install", "-r", str(requirements_path), "--python", str(venv_dir / "bin" / "python")],
+                    ["uv", "pip", "install", *install_args, "--python", str(venv_dir / "bin" / "python")],
                     check=True,
                     cwd=str(target_dir),
                     capture_output=True,
@@ -30,16 +50,16 @@ def setup_python_environment(target_dir: Path, requirements_path: Optional[Path]
             # Fallback to standard python3 -m venv
             subprocess.run([python_cmd, "-m", "venv", str(venv_dir)], check=True, cwd=str(target_dir), capture_output=True)
             pip_bin = venv_dir / "bin" / "pip"
-            if pip_bin.exists() and requirements_path and requirements_path.exists():
+            if install_args:
                 subprocess.run(
-                    [str(pip_bin), "install", "-r", str(requirements_path)],
+                    [str(pip_bin), "install", *install_args],
                     check=True,
                     cwd=str(target_dir),
                     capture_output=True,
                 )
             return True
     except subprocess.CalledProcessError as e:
-        console.print(f"[dim red]Waarschuwing bij Python installatie: {e}[/dim red]")
+        console.print(f"Waarschuwing bij Python installatie: {_format_process_error(e)}", style="dim red", markup=False)
         return False
     except Exception as e:
         console.print(f"[dim red]Onverwachte fout bij Python setup: {e}[/dim red]")
@@ -57,7 +77,7 @@ def setup_node_environment(target_dir: Path) -> bool:
         subprocess.run([installer, "install"], check=True, cwd=str(target_dir), capture_output=True)
         return True
     except subprocess.CalledProcessError as e:
-        console.print(f"[dim red]Waarschuwing bij {installer} installatie: {e}[/dim red]")
+        console.print(f"Waarschuwing bij {installer} installatie: {_format_process_error(e)}", style="dim red", markup=False)
         return False
     except Exception as e:
         console.print(f"[dim red]Onverwachte fout bij Node setup: {e}[/dim red]")
@@ -82,7 +102,7 @@ def init_git_repository(target_dir: Path, initial_commit: bool = True) -> bool:
             )
         return True
     except subprocess.CalledProcessError as e:
-        console.print(f"[dim red]Waarschuwing bij Git initialisatie: {e}[/dim red]")
+        console.print(f"Waarschuwing bij Git initialisatie: {_format_process_error(e)}", style="dim red", markup=False)
         return False
     except Exception as e:
         console.print(f"[dim red]Onverwachte fout bij Git setup: {e}[/dim red]")

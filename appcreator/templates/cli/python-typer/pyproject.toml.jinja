@@ -13,5 +13,10 @@ dependencies = [
     "rich>=13.0.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
 [project.scripts]
-{{ app_slug }} = "{{ app_slug }}.main:app"
+{{ app_slug }} = "{{ package_name }}.main:app"

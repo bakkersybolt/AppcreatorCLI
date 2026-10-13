@@ -28,3 +28,10 @@ def test_cli_dev_empty_dir():
         result = runner.invoke(app, ["dev", "--dir", tmpdir])
         assert result.exit_code == 0
         assert "Geen backend of frontend aangetroffen" in result.output
+
+
+def test_cli_create_rejects_invalid_name():
+    result = runner.invoke(app, ["create", "../kwaadaardig"])
+    assert result.exit_code == 1
+    assert "Ongeldige applicatienaam" in result.output
+

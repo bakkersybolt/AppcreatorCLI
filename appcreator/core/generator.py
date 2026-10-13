@@ -7,15 +7,15 @@ from typing import Any, Dict, List, Optional
 import jinja2
 
 from appcreator.core.manifest import create_manifest
+from appcreator.core.naming import make_package_name, make_slug
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-TEMPLATES_DIR = BASE_DIR / "templates"
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
 
 def get_jinja_env() -> jinja2.Environment:
-    """Configures a flexible Jinja2 environment."""
+    """Configures a strict Jinja2 environment: unknown variables raise instead of rendering empty."""
     return jinja2.Environment(
-        undefined=jinja2.Undefined,
+        undefined=jinja2.StrictUndefined,
         keep_trailing_newline=True,
         autoescape=False,
     )
@@ -29,35 +29,17 @@ def render_string(template_str: str, context: Dict[str, Any]) -> str:
 
 
 def render_file(src_path: Path, dst_path: Path, context: Dict[str, Any]):
-    """Renders a file with Jinja2 if it is text/jinja, otherwise copies directly."""
+    """Renders a .jinja file with Jinja2; any other file is copied unchanged."""
     dst_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Check if binary file
-    is_binary = False
-    try:
-        with open(src_path, "tr", encoding="utf-8") as check_f:
-            check_f.read(1024)
-    except (UnicodeDecodeError, Exception):
-        is_binary = True
-
-    if is_binary:
-        shutil.copy2(src_path, dst_path)
-        return
-
-    try:
+    if src_path.name.endswith(".jinja"):
         content = src_path.read_text(encoding="utf-8")
-        rendered = render_string(content, context)
-        dst_path.write_text(rendered, encoding="utf-8")
-        if dst_path.name.endswith(".sh"):
-            dst_path.chmod(dst_path.stat().st_mode | 0o111)
-    except Exception:
-        # Fallback to direct copy if rendering fails
+        dst_path.write_text(render_string(content, context), encoding="utf-8")
+    else:
         shutil.copy2(src_path, dst_path)
-        if dst_path.name.endswith(".sh"):
-            try:
-                dst_path.chmod(dst_path.stat().st_mode | 0o111)
-            except Exception:
-                pass
+
+    if dst_path.name.endswith(".sh"):
+        dst_path.chmod(dst_path.stat().st_mode | 0o111)
 
 
 def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
@@ -190,6 +172,12 @@ def generate_docker_compose(dst_dir: Path, context: Dict[str, Any]):
     compose_file = dst_dir / "docker-compose.yml"
     compose_file.write_text("\n".join(lines), encoding="utf-8")
 
+    # Docker Compose leest variabelen uit de .env naast docker-compose.yml (niet uit backend/.env)
+    if database == "postgres":
+        root_env = "# Host-poort waarop de PostgreSQL container bereikbaar is\nPOSTGRES_PORT=5432\n"
+        (dst_dir / ".env").write_text(root_env, encoding="utf-8")
+        (dst_dir / ".env.example").write_text(root_env, encoding="utf-8")
+
 
 def copy_skill(skill_name: str, dst_dir: Path, context: Dict[str, Any]):
     """Copies and renders a single skill from templates/skills into dst_dir/.agents/skills/."""
@@ -216,10 +204,10 @@ def assemble_project(
         else:
             entiteiten = []
 
-    app_slug = app_naam.lower().replace(" ", "-").replace("_", "-")
     context = {
         "app_naam": app_naam,
-        "app_slug": app_slug,
+        "app_slug": make_slug(app_naam),
+        "package_name": make_package_name(app_naam),
         "category": category,
         "backend": stack.get("backend"),
         "frontend": stack.get("frontend"),
