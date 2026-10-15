@@ -134,7 +134,7 @@ def create(
     ).ask()
     assistants = normalize_assistants(assistants)
 
-    console.print("[dim]Basis-skills (init-project, stack-skills en bij web/backend de ontwerpsessie) worden altijd automatisch toegevoegd.[/dim]")
+    console.print("[dim]Basis-skills (init-project, todo-beheer, stack-skills en bij web/backend de ontwerpsessie) worden altijd automatisch toegevoegd.[/dim]")
 
     passende_skills = optionele_skills_voor(geselecteerde_cat, stack_config.get("database"))
     skill_choices = [

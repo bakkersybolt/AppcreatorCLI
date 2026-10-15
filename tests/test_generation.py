@@ -519,6 +519,29 @@ def test_generated_skills_are_wellformed(tmp_dir, category, stack, skills):
     assert sorted(load_manifest(target)["skills"]) == geinstalleerd
 
 
+@pytest.mark.parametrize(
+    "category, stack, verwacht_pad",
+    [
+        ("fullstack", FULLSTACK, ".todos/frontend/src/composables/"),
+        ("backend", {"backend": "fastapi", "database": "none", "entiteiten": []}, ".todos/backend/app/api/v1/endpoints/"),
+        ("embedded", {"hardware": "esp32"}, ".todos/src/"),
+        ("cli", {"cli": "python-typer"}, ".todos/src/todoapp/"),
+    ],
+)
+def test_todo_skill_is_always_installed(tmp_dir, category, stack, verwacht_pad):
+    target = tmp_dir / "TodoApp"
+    assemble_project("TodoApp", category, stack, [], target, assistants=["antigravity", "claude"])
+
+    for skills_dir in [".agents/skills", ".claude/skills"]:
+        skill = (target / skills_dir / "todo-beheer" / "SKILL.md").read_text()
+        assert verwacht_pad in skill
+
+    # De aanwijzing staat in de altijd geladen context, zodat de agent todo's ook ongevraagd vastlegt
+    assert "todo-beheer" in (target / "CLAUDE.md").read_text()
+    assert "todo-beheer" in (target / ".agents" / "rules" / "project-context.md").read_text()
+    assert "todo-beheer" in load_manifest(target)["skills"]
+
+
 def test_embedded_project_has_no_web_content_in_skills(tmp_dir):
     target = tmp_dir / "EspApp"
     assemble_project("EspApp", "embedded", {"hardware": "esp32"}, ["code-reviewer"], target, assistants=["claude"])

@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-BASIS_SKILLS = ["init-project"]
+BASIS_SKILLS = ["init-project", "todo-beheer"]
 
 # (stack key, stack value, skill) - worden automatisch toegevoegd bij de bijbehorende stack
 STACK_SKILLS = [

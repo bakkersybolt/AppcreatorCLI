@@ -12,6 +12,7 @@ AppCreator stelt je in staat om via een interactieve terminal wizard binnen enke
 - **🧱 Volledig Modulaire Lagen:** Geen starre sjablonen, maar herbruikbare backend, frontend, database en AI-lagen samengesteld met Jinja2.
 - **🤖 Geïntegreerde AI-Skills:** alleen de skills die bij het projecttype passen worden aangeboden.
   - **`init-project`:** startskill die de lokale omgeving controleert.
+  - **`todo-beheer`:** legt werk buiten de scope van de chat (of op verzoek) vast als `.md`-todo in `.todos/`, in dezelfde mappenstructuur als de code. Toont en pakt open todo's ook op. Altijd aanwezig.
   - **`brainstorm-architect`:** ontwerpsessie in rondes (doel, gebruikers, datamodel, API, schermen) met als uitkomst `docs/ontwerp.md` en `docs/bouwplan.md`. Standaard bij web en backend.
   - **`feature-builder`:** bouwt de applicatie plak voor plak volgens het bouwplan. Standaard bij web en backend.
   - **`test-engineer`:** zet de testomgeving op en schrijft tests met Pytest en Vitest.
@@ -156,7 +157,7 @@ AppcreatorCLI/
 │       ├── embedded/esp32/    # Werkende PlatformIO ESP32 firmware
 │       ├── cli/python-typer/  # Werkende Python CLI boilerplate
 │       ├── rules/             # Regelteksten (zonder frontmatter, die komt per assistent)
-│       └── skills/            # Skillcatalogus (10 skills, SKILL.md of SKILL.md.jinja)
+│       └── skills/            # Skillcatalogus (11 skills, SKILL.md of SKILL.md.jinja)
 └── tests/
     ├── test_cli.py            # Tests voor de CLI commando's
     └── test_generation.py     # End-to-end tests voor alle projecttypen

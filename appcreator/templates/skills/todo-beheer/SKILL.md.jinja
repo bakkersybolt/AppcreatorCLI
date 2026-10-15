@@ -1,0 +1,85 @@
+---
+name: todo-beheer
+description: "Legt werk dat nu niet wordt gedaan vast als todo in `.todos/`, in dezelfde mappenstructuur als de code, en toont of pakt openstaande todo's op. Gebruik wanneer je tijdens een taak iets tegenkomt dat buiten de scope valt, wanneer de gebruiker vraagt iets als todo te noteren, of vraagt welke todo's openstaan of een todo wil laten oppakken."
+---
+
+# Todo-beheer
+
+Todo's zijn Markdown-bestanden in `.todos/` in de projectroot. Ze worden meegecommit, zodat iedereen in het project ze ziet.
+
+## Wanneer je een todo aanmaakt
+
+- **Buiten de scope:** je ziet tijdens een taak iets dat aandacht nodig heeft, maar niet bij de opdracht hoort. Denk aan een ontbrekende controle, een fout in andere code of een functie die nog mist. Los het niet ongevraagd op en laat het ook niet liggen: noteer het als todo en ga verder met de taak.
+- **Op verzoek:** de gebruiker zegt bijvoorbeeld "noteer dit als todo" of "zet dat op de lijst".
+
+Maak geen todo voor iets dat je in de huidige taak toch al oplost. Meld aan het eind van je antwoord in één regel welke todo's je hebt aangemaakt, met hun pad.
+
+## Waar de todo komt
+
+De map in `.todos/` spiegelt het pad van de code waar de todo over gaat, gerekend vanaf de projectroot:
+{% if backend %}
+- `backend/app/api/v1/endpoints/items.py` → `.todos/backend/app/api/v1/endpoints/beveiliging-endpoint-controleren.md`
+- `backend/app/models/` → `.todos/backend/app/models/index-op-email-toevoegen.md`
+{%- endif %}
+{%- if frontend %}
+- `frontend/src/composables/` → `.todos/frontend/src/composables/functie-a-toevoegen.md`
+- `frontend/src/views/HomeView.vue` → `.todos/frontend/src/views/laadstatus-tonen.md`
+{%- endif %}
+{%- if hardware %}
+- `src/main.cpp` → `.todos/src/wifi-herverbinding-toevoegen.md`
+{%- endif %}
+{%- if cli %}
+- `src/{{ package_name }}/main.py` → `.todos/src/{{ package_name }}/foutmelding-bij-ontbrekend-bestand.md`
+{%- endif %}
+
+Gebruik de map van het bestand, niet het bestand zelf. Gaat een todo over het hele project of over meerdere delen tegelijk, zet hem dan direct in `.todos/`. Maak ontbrekende mappen aan.
+
+De bestandsnaam is een korte, beschrijvende slug in kebab-case, in het Nederlands, die zegt wat er moet gebeuren (`beveiliging-endpoint-controleren.md`, niet `todo-1.md`).
+
+Zoek voordat je een todo aanmaakt in `.todos/` of er al een over hetzelfde onderwerp bestaat. Vul die dan aan in plaats van een tweede te maken.
+
+## Inhoud van een todo
+
+```markdown
+---
+aangemaakt: JJJJ-MM-DD
+bron: agent
+prioriteit: middel
+bestanden:
+  - pad/naar/bestand
+---
+
+# Titel als opdracht
+
+## Wat
+
+Wat er moet gebeuren en waar, concreet genoeg om het zonder deze chat op te pakken.
+
+## Waarom
+
+Wat er misgaat of ontbreekt, en waar je het tegenkwam.
+
+## Aanpak
+
+Optioneel: een voorstel voor de oplossing, als je dat al weet.
+```
+
+- `bron` is `agent` als je het zelf tegenkwam en `gebruiker` als de gebruiker erom vroeg.
+- `prioriteit` is `hoog` (fout gedrag, dataverlies of een beveiligingslek), `middel` of `laag`.
+- Beschrijf wat je in de code hebt gezien, geen vermoedens. Weet je iets niet zeker, schrijf dat er dan bij.
+
+## Openstaande todo's tonen
+
+Vraagt de gebruiker welke todo's er zijn, lees dan alle `.todos/**/*.md` en toon ze in een tabel, gegroepeerd per map en met de hoogste prioriteit bovenaan:
+
+| Pad | Titel | Prioriteit |
+| :--- | :--- | :--- |
+
+Zijn er geen todo's, zeg dat dan.
+
+## Een todo oppakken
+
+1. Lees de todo en de bestanden die erin staan.
+2. Voer het werk uit zoals bij elke andere taak, volgens de projectregels in `{{ rules_dir }}/`.
+3. Verwijder het todo-bestand als het werk af is, en ook mappen in `.todos/` die daardoor leeg zijn geworden. De geschiedenis staat in git.
+4. Is het werk maar deels af, laat de todo dan staan en werk `## Wat` bij met wat er nog openstaat.
