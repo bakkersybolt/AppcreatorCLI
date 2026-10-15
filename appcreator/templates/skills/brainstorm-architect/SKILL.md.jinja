@@ -1,6 +1,6 @@
 ---
 name: brainstorm-architect
-description: "Ontwerpsessie in rondes die het doel, de gebruikers, het datamodel, de API en bij een frontend de schermen van de applicatie uitdiept en vastlegt in docs/ontwerp.md en docs/bouwplan.md. Gebruik direct na /init-project, of wanneer de gebruiker de applicatie wil uitdenken, het ontwerp wil aanscherpen of een eerder gestarte ontwerpsessie wil hervatten."
+description: "Ontwerpsessie in rondes die het doel, de gebruikers, het datamodel, de API en bij een frontend de schermen van de applicatie uitdiept en vastlegt in .docs/ontwerp.md en .docs/bouwplan.md. Gebruik direct na /init-project, of wanneer de gebruiker de applicatie wil uitdenken, het ontwerp wil aanscherpen of een eerder gestarte ontwerpsessie wil hervatten."
 ---
 {%- set ronde_scope = 7 if frontend else 5 %}
 {%- set ronde_bouw = 8 if frontend else 6 %}
@@ -11,8 +11,8 @@ Dit is een ontwerpsessie. Schrijf in deze skill geen applicatiecode: de uitkomst
 
 ## Voorbereiding
 
-1. Bestaat `docs/ontwerp.md` al? Lees het en ga verder bij de eerste ronde die onder "Voortgang" niet is afgevinkt. Vat eerst in een paar zinnen samen wat al vaststaat.
-2. Bestaat het nog niet? Kopieer [references/ontwerp-sjabloon.md](references/ontwerp-sjabloon.md) uit deze skillmap naar `docs/ontwerp.md`.
+1. Bestaat `.docs/ontwerp.md` al? Lees het en ga verder bij de eerste ronde die onder "Voortgang" niet is afgevinkt. Vat eerst in een paar zinnen samen wat al vaststaat.
+2. Bestaat het nog niet? Kopieer [references/ontwerp-sjabloon.md](references/ontwerp-sjabloon.md) uit deze skillmap naar `.docs/ontwerp.md`.
 3. Lees `{{ context_file }}` voor de gekozen stack.
 
 ## Zo voer je het gesprek
@@ -30,7 +30,7 @@ Sluit elke ronde zo af:
 
 1. Geef een samenvatting van wat is besloten.
 2. Vraag of het klopt en verwerk correcties.
-3. Schrijf de ronde weg in `docs/ontwerp.md` en vink hem af onder "Voortgang". Doe dit direct, niet pas aan het einde: zo gaat er niets verloren als de sessie wordt onderbroken.
+3. Schrijf de ronde weg in `.docs/ontwerp.md` en vink hem af onder "Voortgang". Doe dit direct, niet pas aan het einde: zo gaat er niets verloren als de sessie wordt onderbroken.
 
 ## Ronde 1: Doel
 
@@ -42,7 +42,7 @@ Begin hier, ook als de gebruiker meteen over schermen of tabellen wil praten. Zo
 
 Sluit af door het doel in drie zinnen in je eigen woorden terug te geven: wat het is, voor wie, en waaraan je ziet dat het werkt. Ga pas verder als de gebruiker dat bevestigt.
 
-Schrijf na akkoord ook een korte sectie "Doel & scope" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}, met het doel in twee of drie zinnen en de regel dat het volledige ontwerp in `docs/ontwerp.md` staat. Zet het ontwerp zelf daar niet in: dat bestand wordt elke sessie geladen.
+Schrijf na akkoord ook een korte sectie "Doel & scope" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}, met het doel in twee of drie zinnen en de regel dat het volledige ontwerp in `.docs/ontwerp.md` staat. Zet het ontwerp zelf daar niet in: dat bestand wordt elke sessie geladen.
 
 ## Ronde 2: Gebruikers en stromen
 
@@ -106,7 +106,7 @@ Verdeel de eerste versie in Slices. Een Slice is één functie die van database 
 - Plan inloggen vroeg als andere Slices ervan afhangen.
 - Houd Slices klein: liever acht kleine dan drie grote.
 
-Schrijf de volgorde na akkoord naar `docs/bouwplan.md`:
+Schrijf de volgorde na akkoord naar `.docs/bouwplan.md`:
 
 ```markdown
 # Bouwplan
@@ -122,7 +122,7 @@ Schrijf de volgorde na akkoord naar `docs/bouwplan.md`:
 
 ## Afronden
 
-1. Lees `docs/ontwerp.md` in zijn geheel na op tegenstrijdigheden tussen de rondes en los die met de gebruiker op.
+1. Lees `.docs/ontwerp.md` in zijn geheel na op tegenstrijdigheden tussen de rondes en los die met de gebruiker op.
 2. Loop "Open vragen en aannames" langs: wat moet nu worden beslist, en wat kan wachten?
 3. Vervang de inleidende alinea van `README.md` door het doel. Laat de installatie- en startinstructies staan.
 4. Meld dat het ontwerp klaar is en dat het bouwen begint met `/feature-builder`.

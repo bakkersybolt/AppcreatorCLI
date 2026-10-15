@@ -13,7 +13,7 @@ AppCreator stelt je in staat om via een interactieve terminal wizard binnen enke
 - **🤖 Geïntegreerde AI-Skills:** alleen de skills die bij het projecttype passen worden aangeboden.
   - **`init-project`:** startskill die de lokale omgeving controleert.
   - **`todo-beheer`:** legt werk buiten de scope van de chat (of op verzoek) vast als `.md`-todo in `.todos/`, in dezelfde mappenstructuur als de code. Toont en pakt open todo's ook op. Altijd aanwezig.
-  - **`brainstorm-architect`:** ontwerpsessie in rondes (doel, gebruikers, datamodel, API, schermen) met als uitkomst `docs/ontwerp.md` en `docs/bouwplan.md`. Standaard bij web en backend.
+  - **`brainstorm-architect`:** ontwerpsessie in rondes (doel, gebruikers, datamodel, API, schermen) met als uitkomst `.docs/ontwerp.md` en `.docs/bouwplan.md`. Standaard bij web en backend.
   - **`feature-builder`:** bouwt de applicatie plak voor plak volgens het bouwplan. Standaard bij web en backend.
   - **`test-engineer`:** zet de testomgeving op en schrijft tests met Pytest en Vitest.
   - **`code-reviewer`:** beoordeelt wijzigingen op fouten, security, types en architectuur.
@@ -31,12 +31,12 @@ AppCreator stelt je in staat om via een interactieve terminal wizard binnen enke
 
 ## 📁 Ondersteunde Project Categorieën
 
-| Categorie | Tech Stack | Inbegrepen Componenten |
-| :--- | :--- | :--- |
-| **🌐 Fullstack Web & API** | Vue 3 + FastAPI | Vue 3 (Vite, TS, Tailwind, Shadcn-Vue, Pinia, Axios) + FastAPI (SQLAlchemy 2.0 async, Pydantic v2, CORS, Healthcheck) + PostgreSQL / SQLite + Docker Compose |
-| **⚡ Backend API Only** | FastAPI | Async FastAPI service met routing, Pydantic schemas, database sessies en health endpoint |
-| **📡 Embedded / IoT** | ESP32 PlatformIO | C++ firmware skelet met 115200 baud serial telemetrie, JSON status payloads, LED indicator en Arduino framework |
-| **💻 Python CLI Tool** | Typer + Rich | Moderne command-line tool met Typer routing, Rich console formatting en Pytest testsuite |
+| Categorie                  | Tech Stack       | Inbegrepen Componenten                                                                                                                                       |
+| :------------------------- | :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🌐 Fullstack Web & API** | Vue 3 + FastAPI  | Vue 3 (Vite, TS, Tailwind, Shadcn-Vue, Pinia, Axios) + FastAPI (SQLAlchemy 2.0 async, Pydantic v2, CORS, Healthcheck) + PostgreSQL / SQLite + Docker Compose |
+| **⚡ Backend API Only**    | FastAPI          | Async FastAPI service met routing, Pydantic schemas, database sessies en health endpoint                                                                     |
+| **📡 Embedded / IoT**      | ESP32 PlatformIO | C++ firmware skelet met 115200 baud serial telemetrie, JSON status payloads, LED indicator en Arduino framework                                              |
+| **💻 Python CLI Tool**     | Typer + Rich     | Moderne command-line tool met Typer routing, Rich console formatting en Pytest testsuite                                                                     |
 
 ---
 
@@ -55,10 +55,13 @@ pip install -e .
 ### Een Nieuw Project Aanmaken
 
 Start eenvoudig de interactieve wizard:
+
 ```bash
 appcreator
 ```
+
 Of geef direct de projectnaam mee:
+
 ```bash
 appcreator create MijnApplicatie
 ```
@@ -72,11 +75,14 @@ appcreator list
 ### Extra AI-Skill Toevoegen aan een Bestaand Project
 
 Ben je al aan het werk in een project en wil je bijvoorbeeld de `database-architect` of `docker-devops` skill toevoegen?
+
 ```bash
 cd MijnApplicatie
 appcreator add-skill
 ```
+
 Of direct bij naam:
+
 ```bash
 appcreator add-skill database-architect
 ```
@@ -94,11 +100,11 @@ appcreator info
 
 In de wizard kies je voor welke assistent de regels en skills worden gegenereerd:
 
-| | Google Antigravity | Claude Code |
-| :--- | :--- | :--- |
-| Projectcontext (altijd actief) | `.agents/rules/project-context.md` | `CLAUDE.md` |
-| Regels per map | `.agents/rules/*.md` (`trigger: glob`) | `.claude/rules/*.md` (`paths:`) |
-| Skills | `.agents/skills/<naam>/SKILL.md` | `.claude/skills/<naam>/SKILL.md` |
+|                                | Google Antigravity                     | Claude Code                      |
+| :----------------------------- | :------------------------------------- | :------------------------------- |
+| Projectcontext (altijd actief) | `.agents/rules/project-context.md`     | `CLAUDE.md`                      |
+| Regels per map                 | `.agents/rules/*.md` (`trigger: glob`) | `.claude/rules/*.md` (`paths:`)  |
+| Skills                         | `.agents/skills/<naam>/SKILL.md`       | `.claude/skills/<naam>/SKILL.md` |
 
 Zodra je project is aangemaakt:
 
@@ -108,16 +114,18 @@ Zodra je project is aangemaakt:
    antigravity .   # of: claude
    ```
 2. Type in de chat:
+
    ```text
    /init-project
    ```
+
    De assistent controleert je omgeving. Bij een web- of backendproject gaat hij daarna direct door met de ontwerpsessie:
 
-   | Stap | Skill | Uitkomst |
-   | :--- | :--- | :--- |
-   | 1 | `/init-project` | Werkende ontwikkelomgeving |
-   | 2 | `/brainstorm-architect` | `docs/ontwerp.md` en `docs/bouwplan.md`: doel, gebruikers, datamodel, API en schermen |
-   | 3 | `/feature-builder` | De applicatie, plak voor plak gebouwd en afgevinkt in het bouwplan |
+   | Stap | Skill                   | Uitkomst                                                                                |
+   | :--- | :---------------------- | :-------------------------------------------------------------------------------------- |
+   | 1    | `/init-project`         | Werkende ontwikkelomgeving                                                              |
+   | 2    | `/brainstorm-architect` | `.docs/ontwerp.md` en `.docs/bouwplan.md`: doel, gebruikers, datamodel, API en schermen |
+   | 3    | `/feature-builder`      | De applicatie, plak voor plak gebouwd en afgevinkt in het bouwplan                      |
 
    De ontwerpsessie begint bij het doel: wat is het idee, welk probleem lost het op en wanneer is de applicatie geslaagd. Een onderbroken sessie gaat verder waar hij was gebleven. Bij een ESP32- of CLI-project stelt `/init-project` zelf drie intakevragen.
 
@@ -128,6 +136,7 @@ De inhoud van regels en skills komt uit één bron in `appcreator/templates/rule
 ## 🧪 Testen
 
 Voer de geautomatiseerde integratietesten uit:
+
 ```bash
 pytest -v tests/
 ```

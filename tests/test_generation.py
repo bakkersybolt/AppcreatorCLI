@@ -628,7 +628,7 @@ def test_brainstorm_rounds_start_with_goal_and_follow_the_stack(tmp_dir):
     eerste_ronde = skill[posities[0]:posities[1]]
     for onderwerp in ["Het idee", "Het probleem", "Succes"]:
         assert onderwerp in eerste_ronde
-    assert "docs/ontwerp.md" in skill and "docs/bouwplan.md" in skill and "/feature-builder" in skill
+    assert ".docs/ontwerp.md" in skill and ".docs/bouwplan.md" in skill and "/feature-builder" in skill
 
     sjabloon = (web / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
     assert "# Ontwerp: Web" in sjabloon
@@ -671,5 +671,5 @@ def test_new_backend_without_entities_has_only_health_endpoint(tmp_dir):
     endpoints = sorted(p.name for p in (target / "backend" / "app" / "api" / "v1" / "endpoints").glob("*.py"))
     assert endpoints == ["health.py"]
     assert "voorbeelden met een lijst in het geheugen" not in (target / "CLAUDE.md").read_text()
-    assert "docs/ontwerp.md" in (target / "CLAUDE.md").read_text()
+    assert ".docs/ontwerp.md" in (target / "CLAUDE.md").read_text()
 

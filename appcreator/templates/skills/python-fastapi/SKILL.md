@@ -7,18 +7,18 @@ description: "Werkwijze voor endpoints, schema's, modellen en dependencies in de
 
 ## Waar staat wat
 
-| Onderdeel | Bestand |
-| :--- | :--- |
-| App en lifespan | `backend/app/main.py` |
-| Instellingen | `backend/app/core/config.py` (`settings`, namen in hoofdletters) |
-| Database-engine en `get_db` | `backend/app/db/session.py` |
-| `Base` voor modellen | `backend/app/db/base.py` |
-| Gedeelde dependencies | `backend/app/api/deps.py` (`DbSession`) |
-| Routerregistratie | `backend/app/api/v1/router.py` |
-| Endpoints | `backend/app/api/v1/endpoints/<entiteit>.py` |
-| Modellen en schema's | `backend/app/models/`, `backend/app/schemas/` |
+| Onderdeel                   | Bestand                                                          |
+| :-------------------------- | :--------------------------------------------------------------- |
+| App en lifespan             | `backend/app/main.py`                                            |
+| Instellingen                | `backend/app/core/config.py` (`settings`, namen in hoofdletters) |
+| Database-engine en `get_db` | `backend/app/db/session.py`                                      |
+| `Base` voor modellen        | `backend/app/db/base.py`                                         |
+| Gedeelde dependencies       | `backend/app/api/deps.py` (`DbSession`)                          |
+| Routerregistratie           | `backend/app/api/v1/router.py`                                   |
+| Endpoints                   | `backend/app/api/v1/endpoints/<entiteit>.py`                     |
+| Modellen en schema's        | `backend/app/models/`, `backend/app/schemas/`                    |
 
-Alle routes staan onder `/api/v1`. Een nieuw project heeft alleen het health-endpoint; bouw nieuwe endpoints volgens het patroon hieronder. Het ontwerp van de applicatie staat in `docs/ontwerp.md` zodra de ontwerpsessie is gedaan.
+Alle routes staan onder `/api/v1`. Een nieuw project heeft alleen het health-endpoint; bouw nieuwe endpoints volgens het patroon hieronder. Het ontwerp van de applicatie staat in `.docs/ontwerp.md` zodra de ontwerpsessie is gedaan.
 
 ## Een entiteit toevoegen of uitwerken
 

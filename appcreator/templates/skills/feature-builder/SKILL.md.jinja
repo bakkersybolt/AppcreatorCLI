@@ -1,6 +1,6 @@
 ---
 name: feature-builder
-description: "Bouwt de volgende plak uit docs/bouwplan.md volgens het ontwerp in docs/ontwerp.md, van model en endpoint tot en met scherm, en vinkt hem af. Gebruik na /brainstorm-architect, of wanneer de gebruiker wil beginnen of verdergaan met het bouwen van de applicatie."
+description: "Bouwt de volgende plak uit .docs/bouwplan.md volgens het ontwerp in .docs/ontwerp.md, van model en endpoint tot en met scherm, en vinkt hem af. Gebruik na /brainstorm-architect, of wanneer de gebruiker wil beginnen of verdergaan met het bouwen van de applicatie."
 ---
 
 # Feature-builder
@@ -9,7 +9,7 @@ Bouw één plak per keer en maak die helemaal af voordat je aan de volgende begi
 
 ## Stap 1: Bepaal wat je bouwt
 
-1. Lees `docs/ontwerp.md` en `docs/bouwplan.md`. Ontbreekt een van beide, bouw dan niet op gevoel: verwijs naar `/brainstorm-architect`.
+1. Lees `.docs/ontwerp.md` en `.docs/bouwplan.md`. Ontbreekt een van beide, bouw dan niet op gevoel: verwijs naar `/brainstorm-architect`.
 2. Pak de eerste plak die niet is afgevinkt, tenzij de gebruiker een andere noemt.
 3. Vertel in twee of drie zinnen wat je gaat bouwen en wat de gebruiker daarna kan. Vraag akkoord.
 4. Raakt de plak een punt onder "Open vragen en aannames" dat nog niet is beslist? Leg dat eerst voor.
@@ -49,6 +49,6 @@ Controleer met `cd frontend && npm run lint && npm run build`.
 ## Stap {{ 4 if frontend else 3 }}: Afronden
 
 1. Loop de stroom uit het ontwerp na die bij deze plak hoort: werkt elke stap?
-2. Vink de plak af in `docs/bouwplan.md`.
-3. Wijkt wat je hebt gebouwd af van het ontwerp, werk dan `docs/ontwerp.md` bij. Het ontwerp moet blijven kloppen met de code.
+2. Vink de plak af in `.docs/bouwplan.md`.
+3. Wijkt wat je hebt gebouwd af van het ontwerp, werk dan `.docs/ontwerp.md` bij. Het ontwerp moet blijven kloppen met de code.
 4. Meld wat de gebruiker nu kan uitproberen en hoe, wat je hebt gecontroleerd, en wat nog openstaat. Noem daarna de volgende plak.
