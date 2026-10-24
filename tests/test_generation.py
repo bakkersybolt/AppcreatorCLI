@@ -57,8 +57,7 @@ def test_generate_fullstack_project(tmp_dir):
 
     # Verifieer frontend inhoud
     assert (target / "frontend" / "package.json").is_file()
-    assert (target / "frontend" / "tailwind.config.js").is_file()
-    assert (target / "frontend" / "postcss.config.js").is_file()
+    assert (target / "frontend" / "src" / "assets" / "index.css").is_file()
     assert (target / "frontend" / "src" / "views" / "HomeView.vue").is_file()
     assert (target / "frontend" / "src" / "services" / "api.ts").is_file()
 

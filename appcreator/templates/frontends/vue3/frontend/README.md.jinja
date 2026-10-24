@@ -1,12 +1,20 @@
 # {{ app_naam }} - Frontend
 
-Vue 3 + Vite + TypeScript + Tailwind CSS + Shadcn-Vue frontend.
+Vue 3 + Vite + TypeScript + Tailwind CSS v4 + Shadcn-Vue (reka-ui) frontend.
 
 ## Installatie & Uitvoering
 
 ```bash
 npm install
 npm run dev
+```
+
+## Controles
+
+```bash
+npm run lint    # eslint --fix, vue-tsc (incl. tests) en prettier --check
+npm run test    # vitest
+npm run build   # vue-tsc --build en vite build
 ```
 
 ## OpenAPI Type Generatie
@@ -17,11 +25,21 @@ Nadat de FastAPI backend draait, kun je de types automatisch synchroniseren met:
 npm run generate:types
 ```
 
+## Huisstijl
+
+- `src/assets/brand/tokens.css`: de kleuren, radius en het lettertype van de app (`--brand-*`). Neutraal tot de
+  skill `design-system` ze invult.
+- `src/assets/index.css`: Tailwind, `tw-animate-css` en de koppeling van de tokens aan de shadcn-variabelen
+  (`--primary`, `--background`, ...). Gebruik in componenten de Tailwind-klassen (`bg-primary`), niet de tokens.
+
 ## Shadcn UI Componenten Toevoegen
 
-Om nieuwe UI componenten toe te voegen, gebruik:
+Gebruik altijd het script, nooit de CLI rechtstreeks:
 
 ```bash
-npx shadcn-vue@latest add [component-naam]
+scripts/shadcn-add.sh <component> [<component> ...]
 ```
+
+Het script overschrijft geen bestaande componenten, zet `package.json`, `package-lock.json` en `src/assets/index.css`
+terug, en stopt met exitcode 2 als een nieuw component een npm-pakket nodig heeft dat nog niet in `package.json` staat.
 De AI-skill `vue-shadcn` beschrijft dit ook voor je AI-assistent.

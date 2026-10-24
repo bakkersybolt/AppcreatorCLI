@@ -104,8 +104,8 @@ def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any], 
     for root, dirs, files in os.walk(src_dir):
         rel_root = Path(root).relative_to(src_dir)
 
-        # Skip pycache, entity templates and hidden system dirs
-        if any(part.startswith("__pycache__") or part.startswith("_") for part in rel_root.parts):
+        # Skip pycache, entity templates and hidden system dirs (but keep `__tests__` dirs of the frontend)
+        if any(part.startswith("_") and part != "__tests__" for part in rel_root.parts):
             continue
         if not all(flags_hold(part, context) for part in rel_root.parts):
             continue

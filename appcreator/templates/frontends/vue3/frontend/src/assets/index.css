@@ -1,55 +1,106 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter';
+@import './brand/tokens.css';
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
+/*
+ * reka-ui marks state with `data-state="open|closed|active|inactive|checked|unchecked"` and
+ * `data-orientation="horizontal|vertical"`, while the shadcn-vue components use the short variants
+ * (`data-open:`, `data-active:`, `data-horizontal:`, ...). These map the short variants onto reka's attributes
+ * (and keep matching a bare `data-open` attribute, which some components set themselves).
+ */
+@custom-variant data-open (&:where([data-state='open'], [data-open]:not([data-open='false'])));
+@custom-variant data-closed (&:where([data-state='closed'], [data-closed]:not([data-closed='false'])));
+@custom-variant data-active (&:where([data-state='active'], [data-active]:not([data-active='false'])));
+@custom-variant data-inactive (&:where([data-state='inactive']));
+@custom-variant data-checked (&:where([data-state='checked'], [data-checked]:not([data-checked='false'])));
+@custom-variant data-unchecked (&:where([data-state='unchecked']));
+@custom-variant data-horizontal (&:where([data-orientation='horizontal']));
+@custom-variant data-vertical (&:where([data-orientation='vertical']));
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
+/*
+ * Dark mode only via a `.dark` class (never set by default). Without this line Tailwind would apply the `dark:`
+ * classes of components/ui on a dark system preference, against the light-only tokens.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * shadcn variables, all taken from the brand tokens in `./brand/tokens.css`.
+ * Change colors there (the `design-system` skill fills them), not here.
+ */
+:root {
+  --radius: var(--brand-radius);
+  --background: var(--brand-bg);
+  --foreground: var(--brand-ink);
+  --card: var(--brand-surface);
+  --card-foreground: var(--brand-ink);
+  --popover: var(--brand-surface);
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-primary);
+  --primary-foreground: var(--brand-on-primary);
+  --secondary: var(--brand-surface-sunken);
+  --secondary-foreground: var(--brand-ink);
+  --muted: var(--brand-surface-sunken);
+  --muted-foreground: var(--brand-ink-muted);
+  --accent: var(--brand-accent);
+  --accent-foreground: var(--brand-on-accent);
+  --success: var(--brand-success);
+  --success-foreground: var(--brand-on-success);
+  --warning: var(--brand-warning);
+  --warning-foreground: var(--brand-on-warning);
+  --destructive: var(--brand-error);
+  --border: var(--brand-hairline);
+  --input: var(--brand-hairline);
+  --ring: var(--brand-focus-ring);
+}
+
+@theme inline {
+  --font-sans: var(--brand-font-sans);
+  --font-heading: var(--font-sans);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+}
+
+/* Marker class used by the shadcn-vue "nova" components for headings (card and dialog titles). */
+@utility cn-font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: var(--tracking-tight);
 }
