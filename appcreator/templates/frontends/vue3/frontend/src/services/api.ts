@@ -24,7 +24,7 @@ api.interceptors.response.use(
   (error) => {
     // Centrale foutafhandeling
     return Promise.reject(error)
-  }
+  },
 )
 
 export default api

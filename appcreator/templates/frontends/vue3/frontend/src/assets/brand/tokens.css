@@ -1,0 +1,30 @@
+/*
+ * Brand tokens of the app: the only place for its colors, radius and font.
+ * Neutral defaults; the `design-system` skill replaces these values with the app's own palette.
+ * `../index.css` maps them to the shadcn variables (`--primary: var(--brand-primary)`, ...).
+ * Use the Tailwind classes in components (`bg-primary`, `text-muted-foreground`), never these tokens directly.
+ */
+:root {
+  --brand-font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --brand-radius: 0.625rem;
+
+  --brand-bg: oklch(1 0 0);
+  --brand-surface: oklch(1 0 0);
+  --brand-surface-sunken: oklch(0.97 0 0);
+  --brand-ink: oklch(0.145 0 0);
+  --brand-ink-muted: oklch(0.556 0 0);
+  --brand-hairline: oklch(0.922 0 0);
+
+  --brand-primary: oklch(0.205 0 0);
+  --brand-on-primary: oklch(0.985 0 0);
+  --brand-accent: oklch(0.97 0 0);
+  --brand-on-accent: oklch(0.205 0 0);
+
+  --brand-success: oklch(0.527 0.154 150.069);
+  --brand-on-success: oklch(0.985 0 0);
+  --brand-warning: oklch(0.769 0.188 70.08);
+  --brand-on-warning: oklch(0.414 0.112 45.904);
+  --brand-error: oklch(0.577 0.245 27.325);
+
+  --brand-focus-ring: oklch(0.708 0 0);
+}
