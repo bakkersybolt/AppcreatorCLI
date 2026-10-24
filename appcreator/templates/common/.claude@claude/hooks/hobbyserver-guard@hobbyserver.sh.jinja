@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Claude Code-hook (PreToolUse, Bash): houdt commando's tegen die data wissen
+# of geheimen tonen. Exitcode 2 = geblokkeerd; de melding gaat naar Claude.
+#
+# Testen:  echo '{"tool_input":{"command":"ssh x docker compose down -v"}}' | GUARD_ONLY_SSH=1 bash .claude/hooks/hobbyserver-guard.sh
+#
+# GUARD_ONLY_SSH=1 (zo staat hij in .claude/settings.json): de regels voor data en .env
+# gelden alleen voor commando's die via ssh op de server draaien, zodat je lokaal
+# vrij met je ontwikkeldatabase kunt werken. Privé-sleutels blijven altijd verboden.
+# =============================================================================
+set -uo pipefail
+
+cmd=$(jq -r '.tool_input.command // empty' 2>/dev/null)
+[[ -z "$cmd" ]] && exit 0
+
+block() {
+  echo "GEBLOKKEERD door de guard-hook (.claude/hooks/): $1" >&2
+  echo "Dit is een vaste regel voor de productieserver. Leg de gebruiker uit wat je wilde doen en waarom;" >&2
+  echo "als het echt nodig is, geef het commando aan de gebruiker om zelf uit te voeren." >&2
+  exit 2
+}
+
+# --- Privé-sleutels (altijd) -------------------------------------------------
+readers='(cat|less|more|head|tail|bat|grep|egrep|rg|awk|sed|strings|xxd|od|base64|pbcopy|nl|tac|cut|sort|vi|vim|nano)'
+grep -Eq "(^|[[:space:];&|\"'(])${readers}[[:space:]][^;&|]*(id_ed25519|id_rsa|id_ecdsa|{{ features.hobbyserver.deploy_key.split("/")[-1] }})[a-zA-Z0-9_-]*([^.a-zA-Z0-9_-]|$)" <<<"$cmd" \
+  && block "privé-sleutels worden nooit gelezen of getoond."
+
+if [[ "${GUARD_ONLY_SSH:-0}" == 1 ]] && ! grep -Eq '(^|[[:space:];&|(])ssh[[:space:]]' <<<"$cmd"; then
+  exit 0
+fi
+
+# --- Data wissen -------------------------------------------------------------
+grep -Eq 'compose.*[[:space:]]down([[:space:]].*)?[[:space:]](-v|--volumes|-[a-zA-Z]*v[a-zA-Z]*)([[:space:]"'\'';&|]|$)' <<<"$cmd" \
+  && block "'docker compose down -v' wist de database-volumes."
+grep -Eq 'volume[[:space:]]+(rm|remove|prune)' <<<"$cmd" \
+  && block "'docker volume rm/prune' wist data."
+grep -Eq 'system[[:space:]]+prune.*--volumes' <<<"$cmd" \
+  && block "'docker system prune --volumes' wist data."
+grep -Eq '(^|[[:space:];&|"'\''])rm[[:space:]].*/opt/backups' <<<"$cmd" \
+  && block "in /opt/backups wordt niets verwijderd."
+grep -Eq 'find[[:space:]]+/opt/backups.*-delete' <<<"$cmd" \
+  && block "in /opt/backups wordt niets verwijderd."
+
+# --- Geheimen tonen ----------------------------------------------------------
+grep -Eq "(^|[[:space:];&|\"'(])${readers}[[:space:]][^;&|]*\.env(\.generated|\.deploy)?([[:space:]\"';&|)]|$)" <<<"$cmd" \
+  && block "de inhoud van .env-bestanden wordt nooit getoond (controleer hooguit of het bestand bestaat met 'test -f')."
+grep -Eq 'compose([[:space:]]+-f[[:space:]]+[^[:space:]]+)*[[:space:]]+config' <<<"$cmd" && grep -q 'ssh' <<<"$cmd" \
+  && block "'docker compose config' op de server toont de wachtwoorden uit .env."
+grep -Eq 'docker[[:space:]]+(container[[:space:]]+)?inspect' <<<"$cmd" && ! grep -Eq 'inspect[^;&|]*(--format|-f[[:space:]])' <<<"$cmd" \
+  && block "'docker inspect' zonder --format toont de omgevingsvariabelen (met wachtwoorden); gebruik --format."
+grep -Eq 'docker[[:space:]]+(compose[[:space:]]+)?exec[^;&|]*[[:space:]](env|printenv)([[:space:]"'\'';&|]|$)' <<<"$cmd" \
+  && block "omgevingsvariabelen van containers bevatten wachtwoorden."
+
+exit 0

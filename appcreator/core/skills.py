@@ -16,6 +16,11 @@ STACK_SKILLS = [
     ("hardware", "esp32", "esp32-development"),
 ]
 
+# Skills that belong to an optional feature chosen in the wizard (they come with extra files)
+FEATURE_SKILLS = {
+    "hobbyserver": "hobbyserver-deploy",
+}
+
 OPTIONELE_SKILLS: List[Dict[str, Any]] = [
     {
         "name": "test-engineer",
@@ -50,6 +55,16 @@ def stack_skills(stack: Dict[str, Any]) -> List[str]:
     return [skill for key, value, skill in STACK_SKILLS if stack.get(key) == value]
 
 
+def feature_skills(features: Optional[Dict[str, Any]]) -> List[str]:
+    """Returns the skills of the features that are switched on."""
+    return [skill for feature, skill in FEATURE_SKILLS.items() if (features or {}).get(feature)]
+
+
+def hobbyserver_mogelijk(category: str, stack: Dict[str, Any]) -> bool:
+    """The hobbyserver deploy needs the FastAPI backend with PostgreSQL."""
+    return category in ("fullstack", "backend") and stack.get("backend") == "fastapi" and stack.get("database") == "postgres"
+
+
 def optionele_skills_voor(category: str, database: Optional[str] = None) -> List[Dict[str, Any]]:
     """Returns the optional skills that make sense for this category and database choice."""
     heeft_database = database not in (None, "none")
@@ -64,6 +79,8 @@ def skill_past_bij_project(skill_naam: str, category: str, stack: Dict[str, Any]
     """Checks whether a skill from the catalog is relevant for the given project."""
     if skill_naam in BASIS_SKILLS:
         return True
+    if skill_naam == FEATURE_SKILLS["hobbyserver"]:
+        return hobbyserver_mogelijk(category, stack)
     for key, value, skill in STACK_SKILLS:
         if skill == skill_naam:
             return stack.get(key) == value

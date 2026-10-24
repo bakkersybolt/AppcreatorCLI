@@ -147,3 +147,14 @@ Naast de app zelf is het doel dat de gebruiker leert software te ontwikkelen doo
 {%- if backend %}
 - **Evalueer per sprint:** elk faseverslag en sprintverslag bevat een evaluatie van de werkwijze met verbetervoorstellen; de gebruiker kiest bij het afsluiten welke direct worden doorgevoerd (skill `sprint-plan`).
 {%- endif %}
+{%- if features.get("hobbyserver") %}
+
+## Productieserver
+
+De app draait in productie op de hobbyserver (https://{{ features.hobbyserver.domain }}) en wordt uitgerold met een push naar `main` (skill `hobbyserver-deploy`). **Pushen naar `main` = live zetten:** alleen na expliciet akkoord.
+{% if assistant == "claude" %}
+@deploy/SERVER.md
+{%- else %}
+Lees `deploy/SERVER.md` voor status, verbinding en de regels op de server.
+{%- endif %}
+{%- endif %}

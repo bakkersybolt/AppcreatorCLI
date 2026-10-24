@@ -19,7 +19,7 @@ from appcreator.core.assistants import (
 from appcreator.core.design import ontwerp_context
 from appcreator.core.manifest import create_manifest
 from appcreator.core.ports import ProjectPorts, default_ports, write_root_env
-from appcreator.core.skills import BASIS_SKILLS, stack_skills
+from appcreator.core.skills import BASIS_SKILLS, feature_skills, stack_skills
 from appcreator.core.naming import make_package_name, make_slug
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -93,8 +93,11 @@ def strip_flags(path: str) -> str:
     return FLAG_PATTERN.sub("", path)
 
 
-def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
-    """Recursively copies and renders a template directory into dst_dir."""
+def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any], only_flag: Optional[str] = None):
+    """Recursively copies and renders a template directory into dst_dir.
+
+    With only_flag, only files whose path carries that @flag are rendered (used to add a feature later).
+    """
     if not src_dir.exists():
         return
 
@@ -112,6 +115,8 @@ def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
             if not context.get("kern_domein") and "kern_domein" in file_name:
                 continue
             if not flags_hold(file_name, context):
+                continue
+            if only_flag and only_flag not in FLAG_PATTERN.findall(str(rel_root / file_name)):
                 continue
 
             src_file = Path(root) / file_name
@@ -134,6 +139,12 @@ def write_port_env(dst_dir: Path, context: Dict[str, Any]):
         return
     ports = ProjectPorts(**{k: context["ports"][k] for k in ("slot", "backend", "frontend", "postgres")})
     write_root_env(dst_dir, ports, include_postgres=FLAGS["postgres"](context))
+
+
+def render_feature(dst_dir: Path, context: Dict[str, Any], feature: str) -> None:
+    """Adds the files of one feature (e.g. hobbyserver) to an existing project."""
+    for layer in ("common", "backends/fastapi", "frontends/vue3"):
+        copy_and_render_tree(TEMPLATES_DIR / layer, dst_dir, context, only_flag=feature)
 
 
 def write_rules(dst_dir: Path, context: Dict[str, Any]):
@@ -272,7 +283,7 @@ def assemble_project(
     write_rules(target_dir, context)
 
     # 5. Agent Skills: basis, stack-specifiek en de gekozen optionele skills
-    alle_skills = list(dict.fromkeys(BASIS_SKILLS + stack_skills(stack) + skills))
+    alle_skills = list(dict.fromkeys(BASIS_SKILLS + stack_skills(stack) + feature_skills(features) + skills))
     for skill in alle_skills:
         copy_skill(skill, target_dir, context)
 

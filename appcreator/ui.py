@@ -69,6 +69,10 @@ def print_summary_card(project_data: dict):
     if ports:
         table.add_row("Poorten", f"backend {ports.backend}, frontend {ports.frontend}, postgres {ports.postgres}")
 
+    hobby = (project_data.get("features") or {}).get("hobbyserver")
+    if hobby:
+        table.add_row("Hobbyserver", f"https://{hobby['domain']} (ssh {hobby['ssh_host']})")
+
     table.add_row("Installatie", "Direct uitvoeren" if project_data.get("install_deps") else "Overslaan (later)")
     table.add_row("Git Initialisatie", "Ja + Initial commit" if project_data.get("init_git") else "Nee")
 

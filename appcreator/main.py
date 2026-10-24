@@ -9,12 +9,12 @@ from rich.table import Table
 
 from appcreator.core.detector import detect_system_tools
 from appcreator.core.assistants import ASSISTANTS, normalize_assistants
-from appcreator.core.generator import TEMPLATES_DIR, assemble_project, build_context, copy_skill
+from appcreator.core.generator import TEMPLATES_DIR, assemble_project, build_context, copy_skill, render_feature
 from appcreator.core.installer import init_git_repository, setup_node_environment, setup_python_environment
-from appcreator.core.manifest import add_skill_to_manifest, load_manifest
+from appcreator.core.manifest import add_skill_to_manifest, load_manifest, update_manifest
 from appcreator.core.naming import make_slug, validate_app_name
 from appcreator.core.ports import allocate_ports, ports_from_manifest, release_ports
-from appcreator.core.skills import optionele_skills_voor, skill_past_bij_project
+from appcreator.core.skills import FEATURE_SKILLS, hobbyserver_mogelijk, optionele_skills_voor, skill_past_bij_project
 from appcreator.ui import (
     console,
     print_banner,
@@ -127,6 +127,14 @@ def create(
     elif geselecteerde_cat == "cli":
         stack_config["cli"] = "python-typer"
 
+    features = {}
+    if hobbyserver_mogelijk(geselecteerde_cat, stack_config):
+        if questionary.confirm(
+            "Online zetten op je hobbyserver (Docker + Traefik, automatisch via GitHub Actions)?",
+            default=False,
+        ).ask():
+            features["hobbyserver"] = vraag_hobbyserver_instellingen(make_slug(app_naam))
+
     # 4. AI-assistent en optionele AI-skills selecteren
     print_step(4, 5, "AI-assistent & Skills")
     assistants = questionary.select(
@@ -192,6 +200,7 @@ def create(
         "install_deps": install_deps,
         "init_git": init_git,
         "ports": project_ports,
+        "features": features,
     }
 
     print_summary_card(project_summary)
@@ -213,6 +222,7 @@ def create(
             target_dir=doel_pad,
             assistants=assistants,
             ports=project_ports,
+            features=features,
         )
 
     console.print(f"[green]✓[/green] Bestanden en mappenstructuur gegenereerd in [cyan]{doel_pad}[/cyan]")
@@ -264,6 +274,23 @@ def create(
     # Resultaat & instructies
     alle_skills = (load_manifest(doel_pad) or {}).get("skills", gekozen_skills)
     print_success_card(app_naam, str(doel_pad), alle_skills, assistants, project_ports)
+
+
+def vraag_hobbyserver_instellingen(app_slug: str) -> dict:
+    """Asks the settings of the hobbyserver deploy (domain, ssh alias, deploy key)."""
+    domein = questionary.text(
+        "Op welk domein komt de app? (zonder https:// of www.)",
+        default=f"{app_slug}.nl",
+        validate=lambda t: bool(t.strip()) and "/" not in t and not t.startswith("www.") or "Alleen het domein, bijv. mijnapp.nl",
+    ).ask()
+    ssh_host = questionary.text("SSH-alias van de server (uit ~/.ssh/config):", default="hobbyserver").ask()
+    deploy_key = questionary.text("Pad naar de deploysleutel:", default="~/.ssh/netcup_deploy").ask()
+    return {
+        "app_name": app_slug,
+        "domain": (domein or f"{app_slug}.nl").strip(),
+        "ssh_host": (ssh_host or "hobbyserver").strip(),
+        "deploy_key": (deploy_key or "~/.ssh/netcup_deploy").strip(),
+    }
 
 
 @app.command(name="list")
@@ -369,13 +396,28 @@ def add_skill(
         raise typer.Exit(1)
 
     app_naam = manifest.get("app_naam", project_dir.name) if manifest else project_dir.name
+    features = dict((manifest or {}).get("features") or {})
+
+    # A feature skill brings its own files (deploy config, hooks): ask its settings and render them too
+    feature = next((f for f, s in FEATURE_SKILLS.items() if s == skill_naam), None)
+    if feature == "hobbyserver" and not features.get("hobbyserver"):
+        features["hobbyserver"] = vraag_hobbyserver_instellingen(make_slug(app_naam))
+
     context = build_context(
         app_naam, category, stack, assistants,
         ports=ports_from_manifest(manifest),
-        features=(manifest or {}).get("features"),
+        features=features,
     )
 
     succes = copy_skill(skill_naam, project_dir, context)
+    if succes and feature:
+        render_feature(project_dir, context, feature)
+        if "claude" in assistants:
+            from appcreator.core.claude_settings import add_hobbyserver_guard
+
+            add_hobbyserver_guard(project_dir)
+        update_manifest(project_dir, features=features)
+        console.print(f"[green]✓[/green] Bestanden voor '{feature}' toegevoegd (deploy/, .github/workflows/, scripts/).")
     if succes:
         add_skill_to_manifest(project_dir, skill_naam)
         doelen = ", ".join(f"{ASSISTANTS[key].skills_dir}/{skill_naam}" for key in assistants)

@@ -1,0 +1,93 @@
+# =============================================================================
+# Productie-compose voor de hobbyserver (gegenereerd door AppCreator). Hoeft NIET aangepast te worden: alle
+# instellingen komen uit deploy/app.env (en de pipeline vult de rest aan).
+#
+# Traefik ziet de labels hieronder en regelt automatisch:
+{%- if frontend %}
+#   https://<APP_DOMAIN>/api/*  -> backend
+#   https://<APP_DOMAIN>/*      -> frontend
+{%- else %}
+#   https://<APP_DOMAIN>/*      -> backend
+{%- endif %}
+#   https://www.<APP_DOMAIN>/*  -> doorgestuurd naar https://<APP_DOMAIN>/*
+# inclusief HTTPS-certificaten (ook voor www).
+#
+# Blijvende opslag (overleeft elke deploy, wordt dagelijks geback-upt):
+#   db-data   database
+#   app-data  /data in de backend – zet hier geüploade bestanden e.d. neer
+#             (alles elders in de backend-container is na een deploy weg)
+# =============================================================================
+
+name: ${APP_NAME:?}
+
+services:
+  db:
+    # Zelfde hoofdversie als lokaal (docker-compose.yml)
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal          # alleen bereikbaar voor de backend, nooit van buitenaf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ${BACKEND_IMAGE:?}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - app-data:/data    # blijvende bestanden (uploads); leeg als de app niets opslaat
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - web
+    labels:
+      - traefik.enable=true
+{%- if frontend %}
+      - traefik.http.routers.${APP_NAME}-api.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/api`)
+{%- else %}
+      - traefik.http.routers.${APP_NAME}-api.rule=Host(`${APP_DOMAIN}`) || Host(`www.${APP_DOMAIN}`)
+{%- endif %}
+      - traefik.http.routers.${APP_NAME}-api.entrypoints=websecure
+      - traefik.http.services.${APP_NAME}-api.loadbalancer.server.port=${BACKEND_PORT:-8000}
+
+{%- if frontend %}
+  frontend:
+    image: ${FRONTEND_IMAGE:?}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${APP_NAME}-web.rule=Host(`${APP_DOMAIN}`)
+      - traefik.http.routers.${APP_NAME}-web.entrypoints=websecure
+      - traefik.http.services.${APP_NAME}-web.loadbalancer.server.port=80
+      # www.<APP_DOMAIN> -> <APP_DOMAIN> (permanente doorverwijzing, pad blijft behouden)
+      - traefik.http.routers.${APP_NAME}-www.rule=Host(`www.${APP_DOMAIN}`)
+      - traefik.http.routers.${APP_NAME}-www.entrypoints=websecure
+      - traefik.http.routers.${APP_NAME}-www.middlewares=${APP_NAME}-www-redirect
+      - traefik.http.middlewares.${APP_NAME}-www-redirect.redirectregex.regex=^https://www\.(.*)
+      - traefik.http.middlewares.${APP_NAME}-www-redirect.redirectregex.replacement=https://$${1}
+      - traefik.http.middlewares.${APP_NAME}-www-redirect.redirectregex.permanent=true
+{%- endif %}
+
+networks:
+  internal: {}
+  web:
+    external: true
+
+volumes:
+  db-data:
+  app-data:

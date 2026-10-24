@@ -1,0 +1,63 @@
+# Productieserver (hobbyserver)
+
+<!-- Gegenereerd door AppCreator (optie hobbyserver). Deze opzet is voor alle apps op de server gelijk. -->
+
+Deze app draait in productie op de hobbyserver en wordt volledig automatisch
+uitgerold via GitHub Actions. Gebruik deze informatie als ik vraag naar de
+status van de server, de app of een deploy.
+
+- **Uitrollen** ("deploy", "zet online", "breng live"): gebruik de skill `hobbyserver-deploy`.
+- **Status** ("hoe staat de app/server ervoor?"): zie Statuscontrole hieronder.
+
+## Instellingen
+- Alle serverinstellingen van deze app staan in `deploy/app.env`
+  (`APP_NAME`, `APP_DOMAIN`, `BACKEND_PORT`, database-naam/gebruiker).
+- Lees `APP_NAME` en `APP_DOMAIN` daaruit; gebruik die waarden in de commando's hieronder.
+- Geheime waarden staan **niet** in de repo maar in het GitHub-secret `APP_SECRETS`.
+
+## Verbinding
+- SSH-alias: `{{ features.hobbyserver.ssh_host }}` (gebruiker `deploy`, staat in `~/.ssh/config`)
+- Commando's uitvoeren met: `ssh {{ features.hobbyserver.ssh_host }} "<commando>"`
+- Deze app staat op de server in: `/opt/apps/<APP_NAME>`
+- Reverse proxy (Traefik, gedeeld door alle apps): `/opt/apps/proxy`
+- Back-ups: `/opt/backups` (dagelijks 03:17, 14 dagen bewaard): `<APP_NAME>_<datum>.sql.gz`
+  (database) en `<APP_NAME>_<datum>.files.tar.gz` (inhoud van `/data`, als daar iets staat)
+
+## Opbouw
+- Containers: `<APP_NAME>-db-1` (Postgres), `<APP_NAME>-backend-1` (Python), `<APP_NAME>-frontend-1` (nginx met Vue-build)
+- Traefik routeert `https://<APP_DOMAIN>/api/*` naar de backend en de rest naar de frontend,
+  op basis van de labels in `deploy/compose.yml`. `https://www.<APP_DOMAIN>` wordt doorgestuurd
+  naar `https://<APP_DOMAIN>`. HTTPS-certificaten gaan automatisch.
+- Uitrollen: push naar `main` → `.github/workflows/deploy.yml` bouwt images (ghcr.io) en start ze op de server.
+- Op de server: `.env` = `.env.generated` (database-wachtwoord, door de server gemaakt) + gegevens uit de pipeline.
+- Blijvende opslag: de database (volume `db-data`) en `/data` in de backend (volume `app-data`).
+  Bestanden die een deploy moeten overleven (uploads e.d.) schrijft de backend **alleen** onder `/data`;
+  alles elders in de container is na de volgende deploy weg.
+
+## Statuscontrole
+Als ik vraag "hoe staat de app ervoor?" of iets vergelijkbaars, controleer dan:
+
+```bash
+ssh {{ features.hobbyserver.ssh_host }} "uptime && free -h && df -h / && docker ps --format 'table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}\t{{ '{{' }}.Image{{ '}}' }}'"
+ssh {{ features.hobbyserver.ssh_host }} "cd /opt/apps/<APP_NAME> && docker compose ps && docker compose logs --tail=50 backend"
+ssh {{ features.hobbyserver.ssh_host }} "cd /opt/apps/proxy && docker compose logs --tail=30 traefik"
+ssh {{ features.hobbyserver.ssh_host }} "ls -lht /opt/backups | grep <APP_NAME> | head -3"
+curl -sS -o /dev/null -w '%{http_code} in %{time_total}s\n' https://<APP_DOMAIN>/
+gh run list --limit 5
+```
+
+Geef daarna een korte samenvatting: wat goed is, wat opvalt (schijf > 80%,
+geheugen krap, containers die herstarten, fouten in de logs, certificaatproblemen
+bij Traefik, een mislukte back-up of deploy) en wat je zou adviseren.
+
+
+## Regels
+- Alleen-lezen commando's (status, logs, `ps`, `df`, `free`) mag je zonder te vragen uitvoeren.
+- **Vraag eerst** voordat je iets wijzigt: commit/push (= deploy!), containers herstarten,
+  `docker compose up/down` op de server, bestanden aanpassen, `prune`.
+- **Nooit** `docker compose down -v` of `docker volume rm` op de server: dat wist de database en de bestanden in `/data`.
+- **Nooit** `.env`, `.env.generated` of `.env.deploy` tonen of in de chat herhalen.
+- Wijzigingen aan de app gaan via git en de pipeline, niet door op de server te editen.
+- De deploybestanden (`deploy/compose.yml`, `.github/workflows/deploy.yml`, `deploy/SERVER.md`) zijn voor
+  alle apps op de server gelijk. Pas ze niet zelf aan; meld het als er iets anders moet.
+- Een hook (`.claude/hooks/hobbyserver-guard.sh`) houdt gevaarlijke servercommando's tegen.
