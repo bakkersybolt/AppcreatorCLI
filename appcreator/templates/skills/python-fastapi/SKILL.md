@@ -94,6 +94,8 @@ Verplaats logica naar `backend/app/services/<entiteit>.py` zodra een endpoint me
 - **Blokkerende aanroepen:** `time.sleep` of `requests` in een `async` endpoint zet alle andere verzoeken stil.
 - **Geen database gekozen:** `get_db` levert dan `None`. Voeg eerst een database toe voordat je queries schrijft.
 - **Nieuwe instelling:** voeg die toe aan `Settings` in `core/config.py` en aan `backend/.env.example`.
+- **Velden met een default worden optioneel in de TS-types:** Pydantic zet een veld met een default (bijv. `kind: Literal["recipe"] = "recipe"`, `page_size: int = 20`) niet in `required` van de OpenAPI-output, dus de gegenereerde types maken het optioneel terwijl de API het altijd stuurt. Zet `model_config = ConfigDict(json_schema_serialization_defaults_required=True)` op responseschema's.
+- **Queryparameter met een Python-keyword:** `from`, `type` of `class` kan geen veldnaam zijn. Gebruik een andere naam met een alias: `Query(alias="type")` of in een querymodel `date_from: date | None = Field(None, alias="from")` met `populate_by_name=True`. Geef het responseveld een eigen naam (`date_from`), want een alias in de response maakt de types onduidelijk.
 
 ## Verdieping
 
