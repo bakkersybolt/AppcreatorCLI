@@ -30,7 +30,7 @@ async function checkBackend(): Promise<void> {
 const skills = [
   { name: '/init-project', text: 'Omgeving controleren' },
   { name: '/brainstorm-architect', text: 'Ontwerpsessie' },
-  { name: '/feature-builder', text: 'Bouwen per plak' },
+  { name: '/sprint-plan', text: 'Bouwen per sprint' },
 ]
 
 onMounted(checkBackend)
@@ -95,6 +95,9 @@ onMounted(checkBackend)
             <span class="text-muted-foreground">{{ skill.text }}</span>
           </li>
         </ul>
+        <p class="text-muted-foreground text-xs">
+          Eén losse plak buiten een sprint bouwen: <code class="font-mono">/feature-builder</code>.
+        </p>
       </section>
     </div>
   </div>

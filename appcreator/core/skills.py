@@ -13,6 +13,7 @@ STACK_SKILLS = [
     ("backend", "fastapi", "open-vragen"),
     ("backend", "fastapi", "documentatie"),
     ("frontend", "vue3", "vue-shadcn"),
+    ("frontend", "vue3", "design-system"),
     ("hardware", "esp32", "esp32-development"),
 ]
 
