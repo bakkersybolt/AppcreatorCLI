@@ -240,10 +240,10 @@ def test_generate_backend_with_multiple_entities(tmp_dir):
 
     # Verifieer router.py imports en routes
     router_code = (target / "backend" / "app" / "api" / "v1" / "router.py").read_text()
-    assert "health, item, user, todo" in router_code
-    assert 'api_router.include_router(item.router, prefix="/items", tags=["Items"])' in router_code
-    assert 'api_router.include_router(user.router, prefix="/users", tags=["Users"])' in router_code
-    assert 'api_router.include_router(todo.router, prefix="/todos", tags=["Todos"])' in router_code
+    # isort-ordered, one module per line (keeps ruff clean)
+    assert "    health,\n    item,\n    todo,\n    user,\n" in router_code
+    for slug, title in (("item", "Items"), ("user", "Users"), ("todo", "Todos")):
+        assert f'    {slug}.router,\n    prefix="/{slug}s",\n    tags=["{title}"],\n' in router_code
 
 
 def test_cli_project_name_with_space_gives_valid_package(tmp_dir):

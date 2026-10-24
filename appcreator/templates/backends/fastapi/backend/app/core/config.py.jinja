@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Optional
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,14 +16,13 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     # Origins that may call the API from a browser (the Vite dev server by default)
     CORS_ORIGINS: list[str] = [{% if frontend == "vue3" %}"http://localhost:{{ ports.frontend }}"{% endif %}]
-
-    {% if database == "postgres" %}
+{% if database == "postgres" %}
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgrespassword@localhost:{{ ports.postgres }}/{{ app_slug }}_db"
-    {% elif database == "sqlite" %}
+{%- elif database == "sqlite" %}
     DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
-    {% else %}
-    DATABASE_URL: Optional[str] = None
-    {% endif %}
+{%- else %}
+    DATABASE_URL: str | None = None
+{%- endif %}
 
 
 @lru_cache

@@ -1,6 +1,14 @@
-# Models package
-{% for e in entiteiten %}
+"""Models package: importing it registers all entities on Base.metadata."""
+{% if entiteiten %}
+{%- for e in entiteiten | sort %}
 from app.models.{{ e | lower }} import {{ e }}
-{% endfor %}
+{%- endfor %}
 
-__all__ = [{% for e in entiteiten %}"{{ e }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+__all__ = [
+{%- for e in entiteiten | sort %}
+    "{{ e }}",
+{%- endfor %}
+]
+{%- else %}
+__all__: list[str] = []
+{%- endif %}
