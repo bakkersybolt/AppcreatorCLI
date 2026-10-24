@@ -1,18 +1,20 @@
 ---
 name: feature-builder
-description: "Bouwt de volgende plak uit .docs/bouwplan.md volgens het ontwerp in .docs/ontwerp.md, van model en endpoint tot en met scherm, en vinkt hem af. Gebruik na /brainstorm-architect, of wanneer de gebruiker wil beginnen of verdergaan met het bouwen van de applicatie."
+description: "Bouwt één losse plak uit .docs/sprints/overzicht.md volgens het ontwerp in .docs/ontwerp/, van model en endpoint tot en met {% if frontend %}scherm{% else %}test{% endif %}, en vinkt hem af. Gebruik alleen als de gebruiker expliciet één plak buiten een sprint wil bouwen, of als subagent binnen een sprint; het normale bouwen gaat per sprint via /sprint-plan."
 ---
 
 # Feature-builder
 
 Bouw één plak per keer en maak die helemaal af voordat je aan de volgende begint. Een plak is af als de gebruiker hem kan uitproberen.
 
+Het normale bouwen gaat per sprint via `/sprint-plan`. Gebruik deze skill alleen voor een losse plak, of als subagent die binnen een sprint een plak bouwt.
+
 ## Stap 1: Bepaal wat je bouwt
 
-1. Lees `.docs/ontwerp.md` en `.docs/bouwplan.md`. Ontbreekt een van beide, bouw dan niet op gevoel: verwijs naar `/brainstorm-architect`.
+1. Lees `.docs/ontwerp/README.md`, de ontwerpbestanden die bij de plak horen, en `.docs/sprints/overzicht.md`. Ontbreekt het ontwerp, bouw dan niet op gevoel: verwijs naar `/brainstorm-architect`.
 2. Pak de eerste plak die niet is afgevinkt, tenzij de gebruiker een andere noemt.
 3. Vertel in twee of drie zinnen wat je gaat bouwen en wat de gebruiker daarna kan. Vraag akkoord.
-4. Raakt de plak een punt onder "Open vragen en aannames" dat nog niet is beslist? Leg dat eerst voor.
+4. Raakt de plak een vraag in `.docs/open-vragen/` die nog niet is beslist? Leg die eerst voor (skill `open-vragen`).
 
 ## Stap 2: Backend
 
@@ -41,7 +43,7 @@ De skill `vue-shadcn` beschrijft componenten, formulieren en het thema.
 2. **Componenten:** installeer de Shadcn-Vue-componenten die het scherm nodig heeft.
 3. **Scherm:** bouw de view in `frontend/src/views/` volgens de beschrijving in het ontwerp, inclusief de toestanden leeg, laden en fout.
 4. **Route en navigatie:** voeg de route toe in `frontend/src/router/index.ts` en neem het scherm op in de navigatie.
-5. **Thema:** is dit de eerste plak met een scherm, zet dan eerst de uitstraling uit het ontwerp in `frontend/src/assets/index.css`.
+5. **Uitstraling:** gebruik de bouwstenen en tokens uit `design-rules.md`; staan die nog niet vast, leg ze dan eerst vast met de skill `design-system`.
 
 Controleer met `cd frontend && npm run lint && npm run build`.
 {%- endif %}
@@ -49,6 +51,7 @@ Controleer met `cd frontend && npm run lint && npm run build`.
 ## Stap {{ 4 if frontend else 3 }}: Afronden
 
 1. Loop de stroom uit het ontwerp na die bij deze plak hoort: werkt elke stap?
-2. Vink de plak af in `.docs/bouwplan.md`.
-3. Wijkt wat je hebt gebouwd af van het ontwerp, werk dan `.docs/ontwerp.md` bij. Het ontwerp moet blijven kloppen met de code.
-4. Meld wat de gebruiker nu kan uitproberen en hoe, wat je hebt gecontroleerd, en wat nog openstaat. Noem daarna de volgende plak.
+2. Vink de plak af in `.docs/sprints/overzicht.md`.
+3. Wijkt wat je hebt gebouwd af van het ontwerp, werk dan het betreffende bestand in `.docs/ontwerp/` bij. Het ontwerp moet blijven kloppen met de code.
+4. Werk de documentatie bij volgens de skill `documentatie`: nieuwe configuratie in `docs/configuratie.md`{% if frontend %}, en een hulpartikel (als concept) voor een nieuw scherm{% endif %}.
+5. Meld wat de gebruiker nu kan uitproberen en hoe, wat je hebt gecontroleerd, en wat nog openstaat. Noem daarna de volgende plak.

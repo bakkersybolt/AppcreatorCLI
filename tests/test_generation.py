@@ -569,7 +569,8 @@ def test_design_session_is_always_installed_for_web_and_backend(tmp_dir):
     for project in (web, api):
         skills = project / ".claude" / "skills"
         assert (skills / "brainstorm-architect" / "SKILL.md").is_file()
-        assert (skills / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").is_file()
+        assert (skills / "brainstorm-architect" / "references" / "ontwerp" / "README.md").is_file()
+        assert (skills / "brainstorm-architect" / "references" / "sprints-overzicht.md").is_file()
         assert (skills / "feature-builder" / "SKILL.md").is_file()
         assert {"brainstorm-architect", "feature-builder"} <= set(load_manifest(project)["skills"])
 
@@ -590,11 +591,18 @@ def test_brainstorm_rounds_start_with_goal_and_follow_the_stack(tmp_dir):
     eerste_ronde = skill[posities[0]:posities[1]]
     for onderwerp in ["Het idee", "Het probleem", "Succes"]:
         assert onderwerp in eerste_ronde
-    assert ".docs/ontwerp.md" in skill and ".docs/bouwplan.md" in skill and "/feature-builder" in skill
+    assert ".docs/ontwerp/" in skill and ".docs/sprints/overzicht.md" in skill and "/sprint-plan" in skill
+    assert ".docs/ontwerp.md" not in skill and ".docs/bouwplan.md" not in skill
 
-    sjabloon = (web / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
-    assert "# Ontwerp: Web" in sjabloon
-    assert "## 5. Schermen" in sjabloon and "## 7. Randvoorwaarden en scope" in sjabloon
+    ontwerp = web / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp"
+    assert sorted(p.name for p in ontwerp.iterdir()) == [
+        "01-doel.md", "02-gebruikers-en-stromen.md", "03-datamodel.md", "04-api-en-toegang.md",
+        "05-schermen.md", "06-navigatie-en-uitstraling.md", "07-randvoorwaarden-en-scope.md", "README.md",
+    ]
+    index = (ontwerp / "README.md").read_text()
+    assert "# Ontwerp: Web" in index
+    assert "[05-schermen.md](05-schermen.md)" in index and "- [ ] 8. Bouwvolgorde" in index
+    assert "# Schermen" in (ontwerp / "05-schermen.md").read_text()
 
     api = tmp_dir / "Api"
     assemble_project("Api", "backend", {"backend": "fastapi", "database": "sqlite"}, [], api, assistants=["claude"])
@@ -603,10 +611,15 @@ def test_brainstorm_rounds_start_with_goal_and_follow_the_stack(tmp_dir):
     assert "## Ronde 6: Bouwvolgorde" in api_skill
     assert "Schermen" not in api_skill and "Navigatie" not in api_skill
 
-    api_sjabloon = (api / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
-    assert "## 5. Randvoorwaarden en scope" in api_sjabloon
-    assert "Schermen" not in api_sjabloon and "Navigatie" not in api_sjabloon
-    assert "- [ ] 6. Bouwvolgorde" in api_sjabloon and "- [ ] 7." not in api_sjabloon
+    api_ontwerp = api / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp"
+    assert sorted(p.name for p in api_ontwerp.iterdir()) == [
+        "01-doel.md", "02-gebruikers-en-stromen.md", "03-datamodel.md", "04-api-en-toegang.md",
+        "05-randvoorwaarden-en-scope.md", "README.md",
+    ]
+    api_index = (api_ontwerp / "README.md").read_text()
+    assert "Schermen" not in api_index and "Navigatie" not in api_index
+    assert "- [ ] 6. Bouwvolgorde" in api_index and "- [ ] 7." not in api_index
+    assert "Schermen" not in (api / ".claude" / "skills" / "brainstorm-architect" / "references" / "sprints-overzicht.md").read_text()
 
     api_builder = (api / ".claude" / "skills" / "feature-builder" / "SKILL.md").read_text()
     assert "## Stap 3: Afronden" in api_builder and "Frontend" not in api_builder
@@ -633,5 +646,6 @@ def test_new_backend_without_entities_has_only_health_endpoint(tmp_dir):
     endpoints = sorted(p.name for p in (target / "backend" / "app" / "api" / "v1" / "endpoints").glob("*.py"))
     assert endpoints == ["health.py"]
     assert "voorbeelden met een lijst in het geheugen" not in (target / "CLAUDE.md").read_text()
-    assert ".docs/ontwerp.md" in (target / "CLAUDE.md").read_text()
+    claude_md = (target / "CLAUDE.md").read_text()
+    assert ".docs/ontwerp/" in claude_md and ".docs/sprints/" in claude_md and ".docs/ontwerp.md" not in claude_md
 

@@ -80,6 +80,32 @@ Deze app heeft een eigen poortblok, zodat hij naast andere apps en worktrees kan
 {% endif -%}
 - CORS, `DEBUG` en het databasewachtwoord staan op ontwikkelwaarden en zijn niet geschikt voor productie.
 {% endif %}
+## Waar staat wat
+
+| Map of bestand | Inhoud | Bijgehouden met |
+| :--- | :--- | :--- |
+| `{{ context_file }}` | Deze projectcontext: stack, commando's, afspraken | met de hand, na akkoord |
+| `{{ rules_dir }}/` | Regels per onderdeel van de code | met de hand, na akkoord |
+| `{{ skills_dir }}/` | Skills voor terugkerende taken | `appcreator add-skill` |
+{%- if backend %}
+| `.docs/ontwerp/` | Het ontwerp, één bestand per onderdeel (index in `README.md`) | skill `brainstorm-architect` |
+| `.docs/sprints/` | `overzicht.md` met de bouwvolgorde, en per sprint een map met bouwplan en verslagen | skill `sprint-plan` |
+| `.docs/open-vragen/` | Beslissingen die nog genomen moeten worden, één bestand per vraag | skill `open-vragen` |
+{%- endif %}
+| `.todos/` | Werk dat later moet gebeuren, in dezelfde mappenstructuur als de code | skill `todo-beheer` |
+{%- if backend %}
+| `docs/` | Technische documentatie: hoe de app nu werkt, voor een ontwikkelaar die het overneemt | skill `documentatie` |
+{%- endif %}
+{%- if frontend %}
+| `frontend/src/content/help/` | Hulpartikelen voor gebruikers, getoond in de app onder `/help` | skill `documentatie` |
+{%- endif %}
+
+`.docs/` beschrijft wat er gebouwd moet worden en hoe het bouwen ging; `docs/` beschrijft hoe de app nu werkt.
+
+## Taalconventie
+
+Alle code is in het Engels: {% if backend %}modellen, tabellen, velden, enum-waarden, endpoints, {% endif %}functies, variabelen en codecommentaar. Alleen teksten die de gebruiker ziet zijn Nederlands{% if frontend %}; die vertaalt de frontend (bijv. status `in_progress` → "Bezig"){% endif %}. Documentatie, skills en verslagen zijn Nederlands.
+
 ## AI-skills
 
 Skills voor terugkerende taken staan in `{{ skills_dir }}/`. Begin een nieuw project met `/init-project`.
@@ -87,5 +113,34 @@ Skills voor terugkerende taken staan in `{{ skills_dir }}/`. Begin een nieuw pro
 Kom je tijdens een taak iets tegen dat buiten de scope valt, of vraagt de gebruiker iets als todo te noteren? Leg het dan vast in `.todos/` volgens de skill `todo-beheer`, in dezelfde mappenstructuur als de code. Los het niet ongevraagd op.
 {%- if backend %}
 
-De vaste volgorde is `/init-project`, dan `/brainstorm-architect` (ontwerpsessie) en daarna `/feature-builder` (bouwen per plak). Het ontwerp staat in `.docs/ontwerp.md` en de bouwvolgorde in `.docs/bouwplan.md` zodra de ontwerpsessie is gedaan. Lees die voordat je functies bouwt of wijzigt.
+Stuit je op een onduidelijkheid of tegenstrijdigheid waar eerst een besluit over nodig is, of wil de gebruiker een vraag parkeren? Leg die vast in `.docs/open-vragen/` volgens de skill `open-vragen`.
+
+De vaste volgorde is `/init-project`, dan `/brainstorm-architect` (ontwerpsessie) en daarna per sprint `/sprint-plan`: eerst het sprintbouwplan voorbereiden, dan de sprint uitvoeren. Lees `.docs/ontwerp/` en `.docs/sprints/` voordat je functies bouwt of wijzigt. Voor één losse plak buiten een sprint is er `/feature-builder`.
+
+## Werken in sprints
+
+- Een sprint wordt uitgevoerd door één **leider-agent**: de sessie waarmee de gebruiker praat. Die verdeelt de fases over subagents (parallel in eigen git-worktrees waar dat kan), merget, controleert en houdt de gebruiker op de hoogte. Zie de skill `sprint-plan`.
+- **Git per sprint:** de sprint begint op een schone `main` met de branch `sprint/<nr>-<onderwerp>` en eindigt met mergen naar `main`. Agents mogen zelf branches, commits, merges en worktrees beheren. **Pushen alleen na expliciet akkoord van de gebruiker.**
+- **Documentatie van de app:** elke sprint sluit af met het bijwerken van `docs/`{% if frontend %} en de hulpartikelen{% endif %} door een documentatie-agent (skill `documentatie`). Bouwende agents leggen tijdens een fase al het minimale vast{% if frontend %}: `meta.help` en een conceptartikel bij een nieuwe route,{% else %}:{% endif %} een regel in `docs/configuratie.md` bij een nieuwe instelling.
+- **Sprintdocumentatie:** elke sprint heeft een map `.docs/sprints/sprint-<nr>-<onderwerp>/` met `bouwplan.md` (plan en "Stand na fase N"), een faseverslag per fase en een sprintverslag. `.docs/sprints/overzicht.md` houdt bij welke sprints en plakken af zijn.
+
+## Parallelle sessies: elk een eigen worktree
+
+Er werken vaak meerdere sessies tegelijk aan dit project. De hoofdmap staat op `main` en is alleen voor mergen; daar wordt niet gebouwd.
+
+- **Bouw je iets buiten een sprint** (todo, fix, styling), start dan in een eigen worktree naast de hoofdmap: `git worktree add ../{{ app_slug }}-<onderwerp> -b <type>/<onderwerp> main`. Link de afhankelijkheden in plaats van ze opnieuw te installeren: `ln -s <hoofdmap>/backend/.venv backend/.venv`{% if frontend %} en `ln -s <hoofdmap>/frontend/node_modules frontend/node_modules`{% endif %}, en kopieer `backend/.env` en `.env`.
+- **Eigen poort{% if database != "none" %} en testdatabase{% endif %}:** start de backend in een worktree op een eigen poort uit het agentblok ({{ ports.agent_start }}–{{ ports.agent_end }}){% if frontend %} en wijs de frontend ernaar met `VITE_PROXY_TARGET=http://localhost:<poort>`{% endif %}.{% if database == "postgres" %} Zet in de `backend/.env` van je worktree een eigen `TEST_DATABASE_URL` (naam met "test", bijv. `{{ app_slug | replace("-", "_") }}_<onderwerp>_test`).{% endif %}
+- **Controleer eerst `git status`.** Staan er wijzigingen die niet van jou zijn, raak ze dan niet aan (niet committen, niet weggooien, niet van branch wisselen) en meld het aan de gebruiker.
+- **Klaar:** mergen naar `main` in de hoofdmap (na akkoord), daarna de branch verwijderen en de worktree opruimen met `git worktree remove`. Pushen alleen na expliciet akkoord.
+{%- endif %}
+
+## Leerdoel: software bouwen met agents
+
+Naast de app zelf is het doel dat de gebruiker leert software te ontwikkelen door agents zoveel mogelijk automatisch te laten bouwen en testen. Help daar actief bij:
+
+- **Geef tips** als iets beter, sneller of betrouwbaarder kan in deze werkwijze: skills, rules, deze projectcontext, prompts aan subagents, parallel werken, hooks, tests, CI of permissies. Kort en concreet, met waarom, onder een kopje "Tip werkwijze" aan het eind van je antwoord. Alleen als het echt iets oplevert.
+- **Liever automatisch dan handmatig:** moet de gebruiker iets controleren of doen wat een agent, test of controle ook kan, zeg dat en stel voor hoe.
+- **Leg voor, voer niet ongevraagd door:** wijzigingen aan skills, rules, hooks of deze projectcontext alleen na akkoord. Kan het later, maak dan een todo in `.todos/` (skill `todo-beheer`).
+{%- if backend %}
+- **Evalueer per sprint:** elk faseverslag en sprintverslag bevat een evaluatie van de werkwijze met verbetervoorstellen; de gebruiker kiest bij het afsluiten welke direct worden doorgevoerd (skill `sprint-plan`).
 {%- endif %}

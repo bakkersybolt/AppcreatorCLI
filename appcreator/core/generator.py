@@ -16,6 +16,7 @@ from appcreator.core.assistants import (
     project_assistant_context,
     rule_frontmatter,
 )
+from appcreator.core.design import ontwerp_context
 from appcreator.core.manifest import create_manifest
 from appcreator.core.ports import ProjectPorts, default_ports, write_root_env
 from appcreator.core.skills import BASIS_SKILLS, stack_skills
@@ -193,6 +194,7 @@ def build_context(
         "kern_domein": entiteiten[0] if entiteiten else None,
         "ports": (ports or default_ports()).as_context(),
         "features": features or {},
+        **ontwerp_context(stack.get("frontend") == "vue3"),
         **project_assistant_context(assistants),
     }
 

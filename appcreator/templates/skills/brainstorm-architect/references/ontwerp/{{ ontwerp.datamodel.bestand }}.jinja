@@ -1,0 +1,21 @@
+# Datamodel
+
+Alle tabellen, velden en enum-waarden zijn Engels (zie de taalconventie in de projectcontext). Elke tabel heeft `id` (int, primaire sleutel), `created_at` en `updated_at`.
+
+## <Entiteit>
+
+| Veld | Type | Verplicht | Opmerking |
+| :--- | :--- | :--- | :--- |
+| <veld> | <type> | <ja/nee> | <uniek, standaardwaarde, toegestane waarden> |
+
+Statussen en overgangen: <welke statussen, en welke overgangen zijn toegestaan>
+
+## Relaties
+
+| Van | Naar | Soort | Bij verwijderen |
+| :--- | :--- | :--- | :--- |
+| <entiteit> | <entiteit> | <één-op-veel / veel-op-veel> | <meeverwijderen / blokkeren / loskoppelen> |
+
+## Historie
+
+<moet bewaard blijven wie iets heeft gewijzigd en wanneer?>

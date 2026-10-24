@@ -9,6 +9,8 @@ STACK_SKILLS = [
     ("backend", "fastapi", "python-fastapi"),
     ("backend", "fastapi", "brainstorm-architect"),
     ("backend", "fastapi", "feature-builder"),
+    ("backend", "fastapi", "sprint-plan"),
+    ("backend", "fastapi", "open-vragen"),
     ("frontend", "vue3", "vue-shadcn"),
     ("hardware", "esp32", "esp32-development"),
 ]

@@ -1,0 +1,76 @@
+# Sprint <nr> – <Onderwerp> (sprintverslag)
+
+Plan: [`bouwplan.md`](bouwplan.md). Faseverslagen: <links naar `verslag-fase-*.md`>.
+
+## Samenvatting
+
+<Twee of drie zinnen: wat de gebruiker nu kan dat voor deze sprint niet kon.>
+
+## Opgeleverd
+
+- [x] **<plak nr. naam>:** <wat werkt>
+- [ ] **<plak>:** <wat niet af is en waarom> (→ sprint <m> of todo `…`)
+
+## Uitproberen
+
+1. <stap voor stap, met URL's en testaccounts>
+
+## Controles
+
+| Controle | Resultaat |
+| :--- | :--- |
+| Backend `pytest` | <aantal tests, geslaagd/gefaald> |
+| Backend `ruff check .` | |
+{%- if frontend %}
+| Frontend `npm run lint` | |
+| Frontend `npm run build` | |
+| Frontend `npm run test` | |
+{%- endif %}
+| End-to-end stromen | <welke stromen uit `{{ ontwerp.stromen.bestand }}`> |
+
+## Documentatie
+
+| Document | Wijziging | Waarom |
+| :--- | :--- | :--- |
+| `docs/<…>.md` | toegevoegd / gewijzigd / verwijderd | <…> |
+{%- if frontend %}
+| `frontend/src/content/help/<…>.md` | | |
+{%- endif %}
+
+## Afwijkingen van het ontwerp
+
+- <wat, waarom, en welk bestand in `.docs/ontwerp/` is bijgewerkt — of "geen">
+
+## Open vragen en todo's
+
+- Open vragen: <paden, of "geen">
+- Todo's: nieuw <paden>, opgelost <paden>
+
+## Commits op main
+
+- <merge-commit en belangrijkste commits>
+
+## Cijfers
+
+| | |
+| :--- | :--- |
+| Fases | <n> (<x> sequentieel, <y> parallel) |
+| Agents gestart | <n> |
+| Parallelle tracks | <n> |
+| Mergeconflicten | <n> |
+| Herstelrondes na falende controles | <n> |
+| Handmatige ingrepen (leider / gebruiker) | <n> / <n>: <waarom> |
+
+## Evaluatie werkwijze
+
+**Ging goed**
+
+- <…>
+
+**Ging minder**
+
+- <concreet incident uit deze sprint>
+
+**Verbetervoorstellen**
+
+1. **<titel>:** <wat aanpassen: skill, regel, template, hook, CI-controle>. *Waarom:* <incident>. *Effect:* <wat het oplevert>. — **Status:** doorgevoerd (`<commit>`) | todo (`<pad>`) | afgewezen

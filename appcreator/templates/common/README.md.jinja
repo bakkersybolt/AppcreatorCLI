@@ -89,8 +89,10 @@ De regels en skills voor {{ assistant_namen }} staan hier:
 Werk in deze volgorde:
 
 1. `/init-project` controleert de ontwikkelomgeving.
-2. `/brainstorm-architect` is de ontwerpsessie: in rondes worden het doel, de gebruikers, het datamodel, de API{% if frontend %} en de schermen{% endif %} uitgediept. De uitkomst staat in `.docs/ontwerp.md` en `.docs/bouwplan.md`.
-3. `/feature-builder` bouwt de applicatie plak voor plak volgens het bouwplan.
+2. `/brainstorm-architect` is de ontwerpsessie: in rondes worden het doel, de gebruikers, het datamodel, de API{% if frontend %} en de schermen{% endif %} uitgediept. De uitkomst staat in `.docs/ontwerp/` (één bestand per onderdeel) en de bouwvolgorde in `.docs/sprints/overzicht.md`.
+3. `/sprint-plan` bereidt per sprint een bouwplan voor en voert de sprint uit met subagents. Losse plakken bouw je met `/feature-builder`.
+
+Hoe de app werkt staat in `docs/`{% if frontend %}; hulpartikelen voor gebruikers staan in `frontend/src/content/help/`{% endif %}. Beide worden bijgehouden met de skill `documentatie`.
 {%- else -%}
 Begin in de chat met `/init-project`. Die skill controleert de ontwikkelomgeving en legt het doel van de applicatie vast.
 {%- endif %}

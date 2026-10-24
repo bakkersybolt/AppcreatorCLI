@@ -1,0 +1,19 @@
+# Ontwerp: {{ app_naam }}
+
+Uitkomst van de ontwerpsessie (`/brainstorm-architect`), per onderdeel een bestand. Werk het bij als het ontwerp verandert, zodat het blijft kloppen met de code.
+
+| Onderdeel | Bestand |
+| :--- | :--- |
+{% for deel in ontwerp_delen -%}
+| {{ deel.nr }}. {{ deel.titel }} | [{{ deel.bestand }}]({{ deel.bestand }}) |
+{% endfor -%}
+| {{ ronde_bouw }}. Bouwvolgorde | [../sprints/overzicht.md](../sprints/overzicht.md) |
+
+Open vragen en onduidelijkheden staan in [`.docs/open-vragen/`](../open-vragen/) (skill `open-vragen`). Werk dat buiten de scope valt staat in `.todos/` (skill `todo-beheer`).
+
+## Voortgang
+
+{% for deel in ontwerp_delen -%}
+- [ ] {{ deel.nr }}. {{ deel.titel }}
+{% endfor -%}
+- [ ] {{ ronde_bouw }}. Bouwvolgorde

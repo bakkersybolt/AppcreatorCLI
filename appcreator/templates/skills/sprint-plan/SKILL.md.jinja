@@ -1,0 +1,204 @@
+---
+name: sprint-plan
+description: "Bereidt een sprint uit .docs/sprints/overzicht.md voor als sprintmap met een bouwplan in fases, werkt een fase uit, legt na elke fase de stand en een faseverslag vast, en voert een hele sprint uit als leider-agent die fases aan (parallelle) subagents geeft, git van main terug naar main beheert en afsluit met een sprintverslag met evaluatie van de werkwijze. Gebruik bij 'bereid sprint X voor', 'maak een bouwplan', 'werk fase N uit', 'werk de stand van fase N bij', 'voer sprint X uit', 'start sprint X', 'schrijf het sprintverslag' of /sprint-plan."
+---
+
+# Sprint Plan Workflow
+
+## Where everything lives (this is the only way of working)
+
+```
+.docs/sprints/
+  overzicht.md                      # all sprints and their slices (plakken), with checkboxes
+  sprint-<nr>-<onderwerp>/          # one folder per sprint, created in mode 1
+    bouwplan.md                     # phases, werkafspraken, besluiten, "Stand na fase N"
+    verslag-fase-<n>-<titel>.md     # phase report, written after each phase
+    verslag-sprint.md               # sprint report, written when the sprint closes
+```
+
+- **`overzicht.md`** is the build order: which sprint contains which slices, and what is done. It stays short. Check off a slice when it is built and tested, a sprint when it is on `main`.
+- **`bouwplan.md`** is the plan and the contract for the next phases: what to build, the decisions, and after each phase the *state* the next phase builds on ("Stand na fase N": files, routes, migration ids). It answers "what is there now and what comes next?"
+- **`verslag-fase-<n>-<titel>.md`** records *what happened* in a phase: which agents ran, what each reported, merge conflicts, failing checks and how they were fixed, deviations, and what went well or badly in the way of working. It answers "how did it go?"
+- **`verslag-sprint.md`** sums up the sprint for the user: what was built, how to try it, checks, open questions and todo's, commits, and an **evaluation of the agent workflow** with improvement proposals.
+- The sprint folder name is the sprint id from `overzicht.md` (`sprint-1-basis`) and matches the git branch `sprint/1-basis`.
+- Do not create sprint folders in advance. A folder is created when the sprint is prepared (mode 1), because the plan depends on what earlier sprints actually built.
+
+Templates next to this file: [bouwplan-template.md](bouwplan-template.md), [verslag-fase-template.md](verslag-fase-template.md), [verslag-sprint-template.md](verslag-sprint-template.md). The design is in `.docs/ontwerp/` (one file per part, index in `README.md`).
+
+Pick the mode that matches the request:
+
+- **Mode 1: New sprint** — `/sprint-plan` without a phase, "bereid sprint X voor", "maak een bouwplan".
+- **Mode 2: Work out a phase** — "werk fase N uit", `/sprint-plan fase N`.
+- **Mode 3: Record a phase** — "werk de stand van fase N bij", or right after a phase is finished.
+- **Mode 4: Run the sprint as leader-agent** — "voer sprint X uit", "start sprint X", `/sprint-plan uitvoeren`.
+- **Mode 5: Sprint report** — "schrijf het sprintverslag"; normally part of closing a sprint in mode 4.
+
+If the request names a phase or sprint but no folder, use the first sprint in `overzicht.md` that is not checked off, and say which one you picked.
+
+## General rules (all modes)
+
+- Talk to the user in Dutch and write bouwplannen and verslagen in Dutch. **All code is English**: identifiers, enum values, comments, docstrings, commit messages (see `{{ context_file }}`, "Taalconventie"). User-facing UI text is Dutch.
+- **Do not ask what you can look up.** Facts in the code, `.docs/`, `.todos/` or `.docs/open-vragen/`: find them yourself and present them for confirmation.
+- **Question rounds:** at most 4 questions per round. {% if assistant == "claude" %}Use `AskUserQuestion` for choices, recommended option first with "(Aanbevolen)" in its label.{% else %}Offer choices as a numbered list, recommended option first with "(Aanbevolen)".{% endif %} After every round give a short summary ("Zo begrijp ik het nu: …").
+- Stop asking once nothing blocking is left. Remaining uncertainty goes into the bouwplan as "Te beslissen in fase N", or into `.docs/open-vragen/` (skill `open-vragen`) when it needs the user's decision later.
+- Out-of-scope problems go into `.todos/` (skill `todo-beheer`).
+- "Wacht op akkoord" means: present the proposal and end your turn.
+- **Learning goal** (see `{{ context_file }}`, "Leerdoel"): the user is learning to build software with agents. When you notice that the workflow, a skill, the werkafspraken or the automation could work better, say so briefly with a concrete proposal, and collect it for the evaluation in the verslagen. Do not change skills or rules without approval.
+
+## Mode 1: New sprint
+
+### Step 1: Load context
+
+- Read `{{ context_file }}`, `{{ rules_dir }}/*.md`, `.docs/sprints/overzicht.md` (the sprint's slices), the relevant files in `.docs/ontwerp/`, and the folders of earlier sprints: the last "Stand na fase" and "Nog open" in their `bouwplan.md`, and the evaluation in their `verslag-sprint.md` (improvements agreed there apply to this sprint).
+- Read the frontmatter of `.todos/**/*.md` and `.docs/open-vragen/*.md`; link the ones that belong to this sprint.
+
+### Step 2: Explore the current situation
+
+- Look up the models, services{% if frontend %}, routes, views, stores and composables{% else %} and routes{% endif %} involved.{% if assistant == "claude" %} Use an Explore agent only for broad searches.{% endif %}
+- Verify every path you put in the bouwplan's "Huidige situatie" against the branch the sprint starts from (`git ls-files main -- <path>`); files that only exist on another branch are named as such.
+- Present a short summary: what exists now (paths, key functions), what is missing, related todo's and open questions. Ask whether it is correct and complete.
+
+### Step 3: Round(s) — remaining decisions
+
+Before asking, walk every user flow from `.docs/ontwerp/{{ ontwerp.stromen.bestand }}` that touches this sprint's slices against the {% if frontend %}screen list and {% endif %}endpoints: can each step be done {% if frontend %}on a screen{% else %}through an endpoint{% endif %} that is in this sprint? Gaps (e.g. "how does the very first user register?") are decisions for this round.
+
+The design already fixes goal, flows, data model, API{% if frontend %} and screens{% endif %}. Only ask what the design leaves open for this sprint (technical choices, libraries, edge cases, deviations found in step 2), as choices with a recommendation. Repeat until nothing blocking is left.
+
+### Step 4: Propose the phasing
+
+- Split the sprint into phases that each leave the application working, ordered by dependency.
+- **Mark every phase as `sequentieel` or `parallel`**, using this pattern:
+  1. **Fundament (sequentieel):** models{% if database != "none" %}, the database migration (Alembic once it is set up, see the skill `database-architect`; until then `create_all`){% endif %}, Pydantic schemas, router registration with endpoint stubs{% if frontend %}, generated frontend types{% endif %}, and **the error codes per endpoint** (in the stubs via `responses=` and as a table in the bouwplan: which status code for which failure). This fixes the contract the parallel work builds on, so all tracks make the same assumptions. Only this phase changes models and migrations. The fundament also fixes:
+     - **Stub contract tests per router:** one test file per router (e.g. `tests/test_contract_<router>.py`) that expects 501 from the stubs, owned by the track that builds that router. The track replaces the 501 expectations itself, so every track hands in green tests.
+     - **PATCH semantics:** how a field is cleared (explicit `null`) versus left unchanged (omitted, `exclude_unset`), per updatable field where it matters.
+     - **Shared response builders:** which helper builds which response (e.g. `build_<entity>_read`), where it lives and who owns it, so tracks do not each write their own.
+{%- if frontend %}
+     - **Shared display rules:** rules that backend and frontend must apply the same way (rounding, sorting, tie handling), so a fixture-based frontend track and the backend agree.
+     - **Realtime per step** (only if the app has live updates): for every step in "Klaar als" where a screen must move without refreshing, which event makes it move and who sends and handles it. Screens with a socket get a `data-*` status attribute (e.g. `data-socket-status`) so tests never wait on fixed timeouts.
+     - **Navigation per screen:** the requirements from `.docs/ontwerp/{{ ontwerp.navigatie.bestand }}` for each new screen (links to it from other screens, menu items, action cards). Each is assigned to the fundament or the integration phase, because they touch shared files that tracks may not change.
+{%- endif %}
+     - **Shared test helpers:** test scenarios that more than one track needs go in `backend/tests/factories.py` (never import from another test file){% if frontend %}; frontend mocks use the typed helpers in `frontend/src/test/`{% endif %}.
+     - **Guard tests:** every rule the tracks must follow that a test can check (style rules, forbidden classes, conventions) gets its guard test in the fundament, not in the integration, with an exception list that each track shrinks for its own files. Tracks then see violations in their own {% if frontend %}`npm run test`/{% endif %}`pytest`.
+{%- if frontend %}
+     - **Fixtures per screen state:** when tracks check screens via screenshots or e2e, the fundament fixes per screen the state it must be captured in (e.g. an empty list, a list with data), so every track can judge its real screen.
+{%- endif %}
+  2. **Tracks (parallel):** independent pieces of work, each with an explicit **file ownership list** (e.g. track A: `backend/app/services/order_*.py`, `backend/app/api/v1/endpoints/orders.py`{% if frontend %}; track B: `frontend/src/views/order/*`{% endif %}). Two tracks never own the same file. Shared files (`models/__init__.py`, `api/v1/router.py`{% if frontend %}, `frontend/src/router/index.ts`, `schema.d.ts`{% endif %}) are owned by the fundament or the integration phase only.
+  3. **Integratie (sequentieel):** merge, {% if frontend %}wire up routes and navigation, regenerate types, check the frontend fixtures against real backend responses, {% endif %}end-to-end test of the sprint's flows. E2E scenarios in the bouwplan never state their own status codes; they refer to the error code table from the fundament ("fails as in the error code table"), so there is one source of truth.
+- A sprint whose slices depend strictly on each other (often sprint 1) may be all sequential. Do not force parallelism where it saves nothing.
+- Per phase: title, mode, goal (one sentence), approach in bullets with files/functions, owned files (parallel tracks), how it is tested automatically, related todo's/open questions, decisions still open.
+- Present the phasing and **wait for approval**.
+
+### Step 5: Create the sprint folder
+
+- After approval, create `.docs/sprints/sprint-<nr>-<onderwerp>/bouwplan.md` from [bouwplan-template.md](bouwplan-template.md). If the folder already exists, do not overwrite; ask.
+- Fill "Werkafspraken" with the standard text from the template, plus the improvements agreed in earlier sprint reports. Ask only whether something must change for this sprint.
+- Record every decision under "Besluiten (afgestemd met de gebruiker)".
+- Add the link to the folder at the sprint's heading in `overzicht.md`.
+- Final message: link, one line per phase (with its mode), and the sentence to start the sprint (`/sprint-plan uitvoeren sprint <nr>`).
+
+## Mode 2: Work out a phase
+
+1. **Read** the whole `bouwplan.md` (werkafspraken, besluiten, all "Stand na fase" sections, the phase), the earlier phase reports in the folder, `{{ context_file }}`, `{{ rules_dir }}/*.md`, and the todo's and open questions the phase mentions.
+2. **Check against the code.** Earlier phases may have changed names or files; report deviations.
+3. **Ask** the decisions marked "Te beslissen" plus any new ones.
+4. **Propose a concrete plan:** new and changed files, models and migrations, API changes, frontend changes, checks, and how it is tested end-to-end. Split a large phase into sub-steps (6a, 6b).
+5. **Wait for approval**, then build according to the werkafspraken. When done, continue with mode 3.
+
+When the leader-agent runs the sprint (mode 4), the leader's approval of the sprint plan counts as approval; subagents do not stop to wait for the user.
+
+## Mode 3: Record a phase
+
+After every phase two things are written, each with its own purpose:
+
+**A. "Stand na fase N" in `bouwplan.md`** — the state the next phase builds on.
+
+1. Determine what was built from `git log`/`git diff` since the previous "Stand na" section and the conversation (or the subagents' reports): migrations (revision ids), new and removed files, routes and schemas, todo's and open questions created or resolved.
+2. Draft `## Stand na fase N (<titel>) – klaar` (or `– deels klaar`) with the headings from the template that apply, in order: Besluiten, Datamodel, Backend, API, Frontend, Opgeruimd, Bugfixes, Todo's, Open vragen, Nog open. Name files, functions, routes and migration ids so the next phase finds them without searching.
+3. Check the rest of the bouwplan: do decisions change "Besluiten" or later phases? Propose those changes, marked "(herzien in fase N)".
+
+**B. `verslag-fase-<n>-<titel>.md` in the sprint folder** — what happened, from [verslag-fase-template.md](verslag-fase-template.md).
+
+- Per agent/track: branch, what it built, commits, checks it ran with results, deviations, what it got stuck on. Summarise the agent's report; keep facts (hashes, failing test names) literal.
+- The leader's part: merge result and conflicts, checks after merging, fixes needed, blocking questions put to the user.
+- **Werkwijze:** what went well and badly in the way of working this phase (unclear prompts, ownership violations, agents waiting on each other, checks that caught or missed problems, manual steps that could be automated), with improvement proposals.
+
+**Present and write.** Outside mode 4: wait for approval. Inside mode 4 the leader writes both directly, commits them, and mentions them in the next status update.
+
+## Mode 4: Run the sprint as leader-agent
+
+You are the **leader-agent**: the one session the user talks to. You plan, delegate, merge and report. You do **not** do the bulk of the building yourself: subagents do. Stay responsive: run subagents in the background and answer the user's questions in between (status, design questions, adding open questions or todo's).
+
+### Step 1: Prepare
+
+1. The sprint folder with `bouwplan.md` must exist (otherwise run mode 1 first).
+2. Git: the working tree must be clean and on `main`. If a remote exists: `git pull --ff-only`. If not clean, ask the user what to do; never discard changes.
+3. Create the sprint branch: `git switch -c sprint/<nr>-<onderwerp>`.
+4. Present the execution plan in a few lines: phases in order, which run in parallel, and the moments you will stop for the user (blocking open questions, the closing questions). **Wait for approval.** After that, run the sprint without asking per phase.
+
+### Step 2: Run each phase
+
+**Sequential phase:** start one subagent{% if assistant == "claude" %} (`Agent`, `subagent_type: general-purpose`){% endif %} working directly on the sprint branch in the main working copy. Do not run other agents in the main working copy at the same time.
+
+**Parallel phase:** start one subagent per track{% if assistant == "claude" %} in a single message, each with `isolation: "worktree"` and `run_in_background: true`{% else %}, each in its own git worktree, running in the background{% endif %}. Each track works on its own branch `sprint-<nr>/fase-<n>-<track>`, created from the current sprint branch.
+
+**Subagent prompt** — subagents only know what you tell them. Always include:
+
+- The path `.docs/sprints/sprint-<nr>-<onderwerp>/bouwplan.md` and the phase/track to build, plus: "Lees eerst `{{ context_file }}`, `{{ rules_dir }}/*.md`, de werkafspraken en alle 'Stand na fase'-secties in het bouwplan."
+- For a track: the exact file ownership list, and "Wijzig geen bestanden buiten deze lijst. Heb je een wijziging in een ander bestand nodig (model, migratie, router, gedeelde component), stop dan en meld het in je rapport."{% if frontend %} If the project has end-to-end tests: "Uitzondering: regels in e2e-specs die teksten of selectors van jouw schermen controleren, pas je zelf aan als jouw wijziging die tekst bewust verandert; noem elke aangepaste regel in je rapport." Name the e2e specs that touch the track's screens (a grep for their testids and texts).{% endif %}
+- Git base (first step, mandatory): "Je worktree kan op een oude commit staan. Doe als eerste `git switch -c sprint-<nr>/fase-<n>-<track> sprint/<nr>-<onderwerp>` en controleer met `git log --oneline -1` dat HEAD `<hash van de sprintbranch>` is. Draai git- en shell-commando's los vanuit de root van je worktree. Geen `cd … && …`, `git -C`, heredocs, shell-lussen of `psql` op de host{% if assistant == "claude" %}: de hook `.claude/hooks/worktree-shell-guard.py` weigert die en zegt wat wel werkt{% endif %}.{% if database != "none" %} Draai nooit twee pytest-runs tegelijk op dezelfde testdatabase.{% endif %} Noem bestanden voluit in `git add`/`git commit`: zsh splitst een variabele als `$FILES` niet in losse woorden." Fill in the current hash of the sprint branch.
+- Worktree setup: "Je werkt in een git-worktree. Kopieer `<repo>/backend/.env` en `<repo>/.env` naar je worktree. Link de afhankelijkheden uit de hoofdmap: `ln -s <repo>/backend/.venv backend/.venv`{% if frontend %} en `ln -s <repo>/frontend/node_modules frontend/node_modules`{% endif %}.{% if database == "postgres" %} Gebruik je eigen testdatabase `{{ app_slug | replace("-", "_") }}_<track>_test` in `TEST_DATABASE_URL` (de naam moet 'test' bevatten){% endif %}{% if database != "none" %} en{% else %} Gebruik{% endif %} backendpoort `<{{ ports.agent_start - 1 }}+n>` (track A {{ ports.agent_start }}, B {{ ports.agent_start + 1 }}, …) (zie 'Lokaal testen' in het bouwplan)."
+- Testing: "Schrijf tests bij wat je bouwt (skill `test-engineer`) en draai alle controles uit de werkafspraken voordat je rapporteert."
+- Ownership self-check (tracks only): "Draai voor je rapport `python3 {{ skills_dir }}/sprint-plan/check_ownership.py .docs/sprints/sprint-<nr>-<onderwerp>/bouwplan.md <track-letter> HEAD sprint/<nr>-<onderwerp>`. Staan er bestanden buiten je eigendom, draai die wijziging dan terug, of noem elk bestand met de reden in je rapport."
+- Documentation: "Volg de skill `documentatie`, sectie 'Tijdens een fase': {% if frontend %}nieuwe route → `meta.help` + conceptartikel, {% endif %}nieuwe configuratievariabele → `docs/configuratie.md`, nieuw CLI-commando of beheertaak → `docs/beheer.md`." (Leave this out for a track that does not own those files; the integration phase does it then.)
+- Git: "Commit je werk in kleine, logische commits op je eigen branch (Engelse conventional commits, eindig met de Co-Authored-By-regel). Noem de bestanden bij naam (`git commit <bestanden> -m …`), nooit `git add -A`, `git add .` of een kale `git commit`. Merge niet, push niet, switch niet naar andere branches."
+- Open questions: "Loop je vast op een onduidelijkheid die een besluit vraagt, leg die vast met de skill `open-vragen`. Blokkeert hij je werk niet, kies dan de aanbevolen optie en ga door; blokkeert hij wel, stop en meld het."
+- Required report: what was built (files, routes, migrations), tests added, checks run with results, the commit hash on which the last full `pytest`{% if frontend %} and `npm run test`{% endif %} ran, commits (hashes), todo's and open questions created, deviations from the bouwplan, and what was unclear or cost unnecessary time (input for the werkwijze evaluation).
+
+**While agents run:** answer the user. If the user adds a question or decision, record it (skill `open-vragen` or the bouwplan's "Besluiten") and, if it affects a running track, send it to that agent{% if assistant == "claude" %} with `SendMessage`{% endif %}.
+
+### Step 3: After each phase
+
+1. Read every report. Check for out-of-scope file changes (`git diff --stat` on the track branch versus the sprint branch).
+2. **Merge in stages** into the sprint branch (`git merge --no-ff sprint-<nr>/fase-<n>-<track>`), running checks after each stage so a failure points to one side:
+   1. backend tracks that depend on each other through a shared function (e.g. a broadcast function and its callers) → `pytest` + `ruff check .`;
+   2. the remaining backend tracks → `pytest` + `ruff check .`;
+{%- if frontend %}
+   3. the frontend tracks → `npm run lint && npm run build && npm run test`.
+{%- endif %}
+
+   Before merging, check each track's diff against its ownership list with `python3 {{ skills_dir }}/sprint-plan/check_ownership.py <sprintmap>/bouwplan.md <track-letter> <track-branch> <sprint-branch>` (exit 1 lists files outside the list; judge those before merging — e2e lines a track adjusted for its own screens are allowed when the report names them). Tracks may sit at any heading level (`### Track A` or `#### Track A` under a wave), and shortened paths such as `components/x/*` match the tail of a full path. Compare the test-run hash in the report with `git rev-parse <track-branch>`: if HEAD moved after the last full test run, rerun the checks on the track branch (or after merging) before trusting them. Resolve conflicts yourself when they are mechanical; when they are not, start a subagent to resolve them or ask the user. Delete merged track branches and remove their worktrees.
+3. Run the checks from the werkafspraken on the sprint branch. On failure: start a subagent to fix it (give it the output), or fix small things yourself. Never continue to the next phase with failing checks.
+4. **Blocking open questions:** stop and put them to the user (skill `open-vragen`, "Beantwoorden"). Non-blocking ones: collect them for the sprint report.
+5. Record the phase (mode 3): "Stand na fase N" in `bouwplan.md` and `verslag-fase-<n>-<titel>.md`. Commit both on the sprint branch.
+6. Give the user a short status update (3–5 lines): phase done, what works now, anything that needs their attention, and a workflow tip if the phase showed one.
+
+### Step 4: Close the sprint
+
+1. Run all checks on the sprint branch and test the sprint's flows end-to-end (see "Lokaal testen").{% if frontend %} Run the frontend unit tests three times in a row: a test that fails in only some runs is flaky — find the cause (often a timing assumption, sometimes a real bug) before closing, never retry it away.{% endif %}
+2. **Update the documentation** (every sprint, never skipped): start one subagent on the sprint branch with the skill `documentatie`, section "Bijwerken na een sprint". Give it the sprint folder path. Check its report, run the checks again (the documentation checks are part of `pytest`{% if frontend %} and `npm run test`{% endif %}), and commit.
+3. Check off the sprint's slices in `overzicht.md`; update `.docs/ontwerp/` where the build deviates from the design.
+4. Write `verslag-sprint.md` (mode 5) and commit.
+5. Report to the user: what was built, what they can try and how, the documentation that changed, the open questions and todo's, and the improvement proposals from the evaluation. Then ask {% if assistant == "claude" %}with **one** `AskUserQuestion` call{% else %}in one message{% endif %}:
+   - which improvement proposals to apply now (multiSelect; the rest become todo's in `.todos/`, skill `todo-beheer`);
+   - whether you may push to `origin main` after merging.
+6. Apply the chosen improvements to skills, rules or `{{ context_file }}` on the sprint branch, note in `verslag-sprint.md` which were applied, and commit.
+7. Check off the sprint in `overzicht.md`, commit, and merge into main: `git switch main && git merge --no-ff sprint/<nr>-<onderwerp>`.
+8. Only after an explicit yes: `git push origin main` (if there is no remote, say so and skip). Delete the sprint branch after a successful push.
+9. **Stop.** Do not start the next sprint; the user starts it in a new session.
+
+### Git rules for this workflow
+
+- Allowed for the leader: branches, commits, merges, worktrees, deleting merged branches.
+- Never without explicit approval: `git push`, force operations (`push --force`, `reset --hard` on shared branches), rewriting history on `main`, deleting unmerged branches.
+- Subagents only commit on their own branch.
+- Commit only the files you mean to commit, named explicitly: `git add <files>` followed by `git commit <files> -m …`. Never run a bare `git commit` or `git add -A`/`git add .`: anything already staged (by the user or another step) would silently end up in the commit.
+
+## Mode 5: Sprint report
+
+Write `.docs/sprints/sprint-<nr>-<onderwerp>/verslag-sprint.md` from [verslag-sprint-template.md](verslag-sprint-template.md):
+
+1. **Gather** from `bouwplan.md`, all `verslag-fase-*.md`, `git log main..HEAD`, the checks and the conversation.
+2. **Result:** what the user can do now, step by step how to try it, checks with results, documentation added/changed/removed (from the documentation agent's report), open questions and todo's created or resolved, deviations from the design.
+3. **Numbers:** phases, agents started, parallel tracks, merge conflicts, fix rounds after failing checks, manual interventions by the leader or the user.
+4. **Evaluatie werkwijze:** what went well, what went badly, and numbered improvement proposals, each with what to change (which skill, rule, template, hook or check), why (the concrete incident from this sprint), and the expected effect. Prefer proposals that make more of the work automatic or automatically checked.
+5. After the user's choice (mode 4, step 4), fill in per proposal: applied (commit) or todo (path).
