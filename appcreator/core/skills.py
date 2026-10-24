@@ -11,6 +11,7 @@ STACK_SKILLS = [
     ("backend", "fastapi", "feature-builder"),
     ("backend", "fastapi", "sprint-plan"),
     ("backend", "fastapi", "open-vragen"),
+    ("backend", "fastapi", "documentatie"),
     ("frontend", "vue3", "vue-shadcn"),
     ("hardware", "esp32", "esp32-development"),
 ]
