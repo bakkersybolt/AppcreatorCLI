@@ -28,18 +28,21 @@ Dit project is gegenereerd met AppCreator CLI. De gekozen stack staat ook in `.a
 - Alles starten met gecombineerde logs: `appcreator dev` (of `./dev.sh`)
 {% endif -%}
 {% if backend -%}
-- Backend starten: `cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000`
+- Backend starten: `cd backend && .venv/bin/uvicorn app.main:app --reload --port {{ ports.backend }}`
 - Backend testen: `cd backend && .venv/bin/pytest` (er zijn nog geen tests; zie de skill `test-engineer`)
-- API-documentatie: http://localhost:8000/docs, alle routes staan onder `/api/v1`
+- API-documentatie: http://localhost:{{ ports.backend }}/docs, alle routes staan onder `/api/v1`
 {% endif -%}
 {% if frontend -%}
-- Frontend starten: `cd frontend && npm run dev` (http://localhost:5173)
+- Frontend starten: `cd frontend && npm run dev` (http://localhost:{{ ports.frontend }})
 - Frontend controleren: `cd frontend && npm run lint && npm run build`
 - Frontend testen: `cd frontend && npm run test`
 - TypeScript-types uit de API genereren: `cd frontend && npm run generate:types` (de backend moet draaien)
 {% endif -%}
 {% if database == "postgres" -%}
 - Database starten: `docker compose up -d postgres` (poort via `POSTGRES_PORT` in `.env` in de projectroot)
+{% endif -%}
+{% if backend or frontend -%}
+- Poorten tonen of opnieuw toewijzen: `appcreator ports` / `appcreator ports --reassign`
 {% endif -%}
 {% if hardware -%}
 - Compileren: `pio run`
@@ -50,6 +53,21 @@ Dit project is gegenereerd met AppCreator CLI. De gekozen stack staat ook in `.a
 - Installeren voor ontwikkeling: `python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`
 - Uitvoeren: `.venv/bin/{{ app_slug }} --help`
 - Testen: `.venv/bin/pytest`
+{% endif %}
+{%- if backend or frontend %}
+## Poorten
+
+Deze app heeft een eigen poortblok, zodat hij naast andere apps en worktrees kan draaien. De waarden staan in `.env` in de projectroot; gebruik nooit de standaardpoorten van FastAPI, Vite of PostgreSQL.
+
+<!-- appcreator:ports:start -->
+| Onderdeel | Poort |
+| :--- | :--- |
+{% if frontend %}| Frontend (Vite) | {{ ports.frontend }} |
+{% endif %}{% if backend %}| Backend (FastAPI) | {{ ports.backend }} |
+| Backends van agents in worktrees | {{ ports.agent_start }}–{{ ports.agent_end }} |
+{% endif %}{% if database == "postgres" %}| PostgreSQL | {{ ports.postgres }} |
+{% endif %}| E2E-tests (backend / frontend) | {{ ports.e2e_backend }} / {{ ports.e2e_frontend }} |
+<!-- appcreator:ports:end -->
 {% endif %}
 {%- if backend %}
 ## Stand van de gegenereerde code

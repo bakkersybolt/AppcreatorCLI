@@ -65,6 +65,10 @@ def print_summary_card(project_data: dict):
         skills_formatted = ", ".join(f"[green]{s}[/green]" for s in skills)
         table.add_row("Extra AI-skills", skills_formatted)
 
+    ports = project_data.get("ports")
+    if ports:
+        table.add_row("Poorten", f"backend {ports.backend}, frontend {ports.frontend}, postgres {ports.postgres}")
+
     table.add_row("Installatie", "Direct uitvoeren" if project_data.get("install_deps") else "Overslaan (later)")
     table.add_row("Git Initialisatie", "Ja + Initial commit" if project_data.get("init_git") else "Nee")
 
@@ -72,7 +76,7 @@ def print_summary_card(project_data: dict):
     console.print()
 
 
-def print_success_card(app_naam: str, doel_pad: str, installed_skills: list, assistants: Optional[List[str]] = None):
+def print_success_card(app_naam: str, doel_pad: str, installed_skills: list, assistants: Optional[List[str]] = None, ports=None):
     """Prints the completion card with next steps instructions."""
     console.print()
     skills_text = "\n".join(f"  • [green]✓[/green] [bold]{s}[/bold]" for s in installed_skills)
@@ -88,7 +92,9 @@ def print_success_card(app_naam: str, doel_pad: str, installed_skills: list, ass
         f"  1. Ga naar je projectmap:\n"
         f"     [cyan]cd {app_naam}[/cyan]\n\n"
         f"  2. Start de ontwikkelomgeving met gecombineerde logs:\n"
-        f"     [bold cyan]appcreator dev[/bold cyan]  (of [cyan]./dev.sh[/cyan])\n\n"
+        f"     [bold cyan]appcreator dev[/bold cyan]  (of [cyan]./dev.sh[/cyan])\n"
+        + (f"     Frontend op [cyan]http://localhost:{ports.frontend}[/cyan], API op [cyan]http://localhost:{ports.backend}/docs[/cyan]\n" if ports else "")
+        + "\n"
         f"  3. Open het project in je AI-assistent:\n"
         f"{open_text}\n\n"
         f"  4. Voer in de chat de startskill uit; bij een web- of backendproject volgt daarna de ontwerpsessie:\n"

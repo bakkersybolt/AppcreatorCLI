@@ -1,6 +1,7 @@
 """Modular template assembly and Jinja2 rendering engine for AppCreator."""
 
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -16,6 +17,7 @@ from appcreator.core.assistants import (
     rule_frontmatter,
 )
 from appcreator.core.manifest import create_manifest
+from appcreator.core.ports import ProjectPorts, default_ports, write_root_env
 from appcreator.core.skills import BASIS_SKILLS, stack_skills
 from appcreator.core.naming import make_package_name, make_slug
 
@@ -52,6 +54,36 @@ def render_file(src_path: Path, dst_path: Path, context: Dict[str, Any]):
         dst_path.chmod(dst_path.stat().st_mode | 0o111)
 
 
+# Conditional files: a tag like `@frontend` in a file or folder name means "only generate
+# this when the flag holds"; the tag is stripped from the output name.
+# Example: `HelpView@frontend.vue` -> `HelpView.vue`, only in projects with a Vue frontend.
+FLAG_PATTERN = re.compile(r"@([a-z]+)")
+
+FLAGS = {
+    "frontend": lambda c: c.get("frontend") == "vue3",
+    "backend": lambda c: c.get("backend") == "fastapi",
+    "web": lambda c: bool(c.get("backend") or c.get("frontend")),
+    "postgres": lambda c: c.get("database") == "postgres",
+    "database": lambda c: c.get("database") not in (None, "none"),
+    "claude": lambda c: "claude" in c.get("assistants", []),
+    "hobbyserver": lambda c: bool((c.get("features") or {}).get("hobbyserver")),
+}
+
+
+def flags_hold(name: str, context: Dict[str, Any]) -> bool:
+    """True when every @flag tag in a path part holds for this project."""
+    for flag in FLAG_PATTERN.findall(name):
+        if flag not in FLAGS:
+            raise ValueError(f"Onbekende template-flag '@{flag}' in '{name}'")
+        if not FLAGS[flag](context):
+            return False
+    return True
+
+
+def strip_flags(path: str) -> str:
+    return FLAG_PATTERN.sub("", path)
+
+
 def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
     """Recursively copies and renders a template directory into dst_dir."""
     if not src_dir.exists():
@@ -63,16 +95,20 @@ def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
         # Skip pycache, entity templates and hidden system dirs
         if any(part.startswith("__pycache__") or part.startswith("_") for part in rel_root.parts):
             continue
+        if not all(flags_hold(part, context) for part in rel_root.parts):
+            continue
 
         for file_name in files:
             # Sla entiteit-specifieke sjablonen over als er geen kern_domein is gekozen
             if not context.get("kern_domein") and "kern_domein" in file_name:
                 continue
+            if not flags_hold(file_name, context):
+                continue
 
             src_file = Path(root) / file_name
 
             # Resolve template variables in target file path (e.g. {{ app_slug }})
-            rel_file_path_str = str(rel_root / file_name)
+            rel_file_path_str = strip_flags(str(rel_root / file_name))
             rendered_rel_path = render_string(rel_file_path_str, context)
 
             # Strip .jinja suffix if present
@@ -83,110 +119,12 @@ def copy_and_render_tree(src_dir: Path, dst_dir: Path, context: Dict[str, Any]):
             render_file(src_file, target_file, context)
 
 
-def generate_docker_compose(dst_dir: Path, context: Dict[str, Any]):
-    """Generates a tailored docker-compose.yml based on chosen components."""
-    backend = context.get("backend")
-    frontend = context.get("frontend")
-    database = context.get("database")
-
-    if not backend and not frontend and database != "postgres":
+def write_port_env(dst_dir: Path, context: Dict[str, Any]):
+    """Writes the app's ports into the root .env (read by Docker Compose, dev.sh, Vite and `appcreator dev`)."""
+    if not FLAGS["web"](context):
         return
-
-    lines = [
-        "services:",
-    ]
-
-    # Database service
-    if database == "postgres":
-        lines.extend([
-            "  postgres:",
-            "    image: postgres:16-alpine",
-            f"    container_name: {context.get('app_slug', 'app')}-postgres",
-            "    restart: unless-stopped",
-            "    environment:",
-            "      POSTGRES_USER: postgres",
-            "      POSTGRES_PASSWORD: postgrespassword",
-            f"      POSTGRES_DB: {context.get('app_slug', 'app')}_db",
-            "    ports:",
-            "      - '${POSTGRES_PORT:-5432}:5432'",
-            "    volumes:",
-            "      - postgres_data:/var/lib/postgresql/data",
-            "    healthcheck:",
-            "      test: ['CMD-SHELL', 'pg_isready -U postgres']",
-            "      interval: 5s",
-            "      timeout: 5s",
-            "      retries: 5",
-            "",
-        ])
-
-    # Backend service
-    if backend == "fastapi":
-        lines.extend([
-            "  backend:",
-            "    build:",
-            "      context: ./backend",
-            "      dockerfile: Dockerfile",
-            f"    container_name: {context.get('app_slug', 'app')}-backend",
-            "    restart: unless-stopped",
-            "    ports:",
-            "      - '8000:8000'",
-            "    environment:",
-        ])
-        if database == "postgres":
-            lines.extend([
-                f"      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/{context.get('app_slug', 'app')}_db",
-            ])
-        else:
-            lines.extend([
-                "      - DATABASE_URL=sqlite+aiosqlite:///./app.db",
-            ])
-        lines.extend([
-            "      - ENVIRONMENT=development",
-            "    volumes:",
-            "      - ./backend:/app",
-        ])
-        if database == "postgres":
-            lines.extend([
-                "    depends_on:",
-                "      postgres:",
-                "        condition: service_healthy",
-            ])
-        lines.append("")
-
-    # Frontend service
-    if frontend == "vue3":
-        lines.extend([
-            "  frontend:",
-            "    build:",
-            "      context: ./frontend",
-            "      dockerfile: Dockerfile",
-            f"    container_name: {context.get('app_slug', 'app')}-frontend",
-            "    restart: unless-stopped",
-            "    ports:",
-            "      - '5173:5173'",
-            "    volumes:",
-            "      - ./frontend:/app",
-            "      - /app/node_modules",
-            "    environment:",
-            "      - VITE_API_URL=http://localhost:8000/api/v1",
-            "",
-        ])
-
-    if database == "postgres":
-        lines.extend([
-            "volumes:",
-            "  postgres_data:",
-            "",
-        ])
-
-    compose_file = dst_dir / "docker-compose.yml"
-    compose_file.write_text("\n".join(lines), encoding="utf-8")
-
-    # Docker Compose leest variabelen uit de .env naast docker-compose.yml (niet uit backend/.env)
-    if database == "postgres":
-        root_env = "# Host-poort waarop de PostgreSQL container bereikbaar is\nPOSTGRES_PORT=5432\n"
-        (dst_dir / ".env").write_text(root_env, encoding="utf-8")
-        (dst_dir / ".env.example").write_text(root_env, encoding="utf-8")
+    ports = ProjectPorts(**{k: context["ports"][k] for k in ("slot", "backend", "frontend", "postgres")})
+    write_root_env(dst_dir, ports, include_postgres=FLAGS["postgres"](context))
 
 
 def write_rules(dst_dir: Path, context: Dict[str, Any]):
@@ -230,6 +168,8 @@ def build_context(
     category: str,
     stack: Dict[str, Any],
     assistants: Optional[List[str]] = None,
+    ports: Optional[ProjectPorts] = None,
+    features: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Builds the template context for a project from its name, category and stack."""
     entiteiten = stack.get("entiteiten")
@@ -251,6 +191,8 @@ def build_context(
         "database": stack.get("database", "none"),
         "entiteiten": entiteiten,
         "kern_domein": entiteiten[0] if entiteiten else None,
+        "ports": (ports or default_ports()).as_context(),
+        "features": features or {},
         **project_assistant_context(assistants),
     }
 
@@ -262,9 +204,11 @@ def assemble_project(
     skills: List[str],
     target_dir: Path,
     assistants: Optional[List[str]] = None,
+    ports: Optional[ProjectPorts] = None,
+    features: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Assembles all layers and renders the project into target_dir."""
-    context = build_context(app_naam, category, stack, assistants)
+    context = build_context(app_naam, category, stack, assistants, ports, features)
     entiteiten = context["entiteiten"]
 
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -311,8 +255,8 @@ def assemble_project(
         cli_dir = TEMPLATES_DIR / "cli" / "python-typer"
         copy_and_render_tree(cli_dir, target_dir, context)
 
-    # 3. Dynamic Docker Compose
-    generate_docker_compose(target_dir, context)
+    # 3. Ports of this app in the root .env (docker-compose.yml comes from common/)
+    write_port_env(target_dir, context)
 
     # 4. Agent Rules (project context + stack rules per gekozen assistent)
     write_rules(target_dir, context)
@@ -330,6 +274,8 @@ def assemble_project(
         stack=stack,
         skills=alle_skills,
         assistants=context["assistants"],
+        ports={k: context["ports"][k] for k in ("slot", "backend", "frontend", "postgres")} if FLAGS["web"](context) else None,
+        features=context["features"],
     )
 
     return target_dir

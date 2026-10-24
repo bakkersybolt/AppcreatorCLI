@@ -26,7 +26,7 @@ Alle routes staan onder `/api/v1`. Een nieuw project heeft alleen het health-end
 2. **Schema's** in `backend/app/schemas/<entiteit>.py`: `Create`, `Update` met alle velden optioneel, en `Response` met `model_config = ConfigDict(from_attributes=True)`.
 3. **Endpoints** volgens het voorbeeld.
 4. **Router** registreren in `backend/app/api/v1/router.py`.
-5. **Controleren** in http://localhost:8000/docs of met een test.
+5. **Controleren** via `/docs` op de backendpoort (`BACKEND_PORT` in `.env` in de projectroot) of met een test.
 
 ```python
 # backend/app/api/v1/endpoints/todo.py

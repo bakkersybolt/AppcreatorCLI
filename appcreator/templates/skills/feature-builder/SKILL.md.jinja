@@ -30,7 +30,7 @@ Dit project is gegenereerd zonder database: `get_db` levert `None`. Bespreek met
 `create_all` maakt alleen ontbrekende tabellen aan en past bestaande niet aan. Vraag bij een gewijzigd model of de ontwikkeldatabase opnieuw mag worden aangemaakt, of gebruik migraties.
 {%- endif %}
 
-Controleer de backend voordat je verdergaat: roep de nieuwe endpoints aan via http://localhost:8000/docs of schrijf er een test voor.
+Controleer de backend voordat je verdergaat: roep de nieuwe endpoints aan via http://localhost:{{ ports.backend }}/docs of schrijf er een test voor.
 {%- if frontend %}
 
 ## Stap 3: Frontend

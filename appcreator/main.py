@@ -12,7 +12,8 @@ from appcreator.core.assistants import ASSISTANTS, normalize_assistants
 from appcreator.core.generator import TEMPLATES_DIR, assemble_project, build_context, copy_skill
 from appcreator.core.installer import init_git_repository, setup_node_environment, setup_python_environment
 from appcreator.core.manifest import add_skill_to_manifest, load_manifest
-from appcreator.core.naming import validate_app_name
+from appcreator.core.naming import make_slug, validate_app_name
+from appcreator.core.ports import allocate_ports, ports_from_manifest, release_ports
 from appcreator.core.skills import optionele_skills_voor, skill_past_bij_project
 from appcreator.ui import (
     console,
@@ -173,6 +174,11 @@ def create(
         default=True,
     ).ask()
 
+    # Eigen poortblok voor web-apps, zodat ze naast andere apps kunnen draaien
+    project_ports = None
+    if geselecteerde_cat in ["fullstack", "backend"]:
+        project_ports = allocate_ports(doel_pad, make_slug(app_naam))
+
     # Samenvatting
     project_summary = {
         "app_naam": app_naam,
@@ -185,12 +191,15 @@ def create(
         "skills": gekozen_skills,
         "install_deps": install_deps,
         "init_git": init_git,
+        "ports": project_ports,
     }
 
     print_summary_card(project_summary)
 
     akkoord = questionary.confirm("Wil je het project nu genereren?", default=True).ask()
     if not akkoord:
+        if project_ports:
+            release_ports(doel_pad)
         print_info("Generatie geannuleerd.")
         raise typer.Exit()
 
@@ -203,6 +212,7 @@ def create(
             skills=gekozen_skills,
             target_dir=doel_pad,
             assistants=assistants,
+            ports=project_ports,
         )
 
     console.print(f"[green]✓[/green] Bestanden en mappenstructuur gegenereerd in [cyan]{doel_pad}[/cyan]")
@@ -253,7 +263,7 @@ def create(
 
     # Resultaat & instructies
     alle_skills = (load_manifest(doel_pad) or {}).get("skills", gekozen_skills)
-    print_success_card(app_naam, str(doel_pad), alle_skills, assistants)
+    print_success_card(app_naam, str(doel_pad), alle_skills, assistants, project_ports)
 
 
 @app.command(name="list")
@@ -359,7 +369,11 @@ def add_skill(
         raise typer.Exit(1)
 
     app_naam = manifest.get("app_naam", project_dir.name) if manifest else project_dir.name
-    context = build_context(app_naam, category, stack, assistants)
+    context = build_context(
+        app_naam, category, stack, assistants,
+        ports=ports_from_manifest(manifest),
+        features=(manifest or {}).get("features"),
+    )
 
     succes = copy_skill(skill_naam, project_dir, context)
     if succes:
@@ -398,6 +412,10 @@ def show_info():
     skills = manifest.get("skills", [])
     table.add_row("Geïnstalleerde Skills", ", ".join(skills))
 
+    ports = ports_from_manifest(manifest)
+    if ports:
+        table.add_row("Poorten", f"backend {ports.backend}, frontend {ports.frontend}, postgres {ports.postgres}")
+
     console.print(table)
 
 
@@ -415,6 +433,26 @@ def dev(
 
     print_banner()
     run_dev_server(project_dir=project_dir)
+
+
+@app.command(name="ports")
+def ports_cmd(
+    project_dir: Optional[Path] = typer.Option(None, "--dir", "-d", help="Pad naar het project (standaard huidige map)"),
+    reassign: bool = typer.Option(False, "--reassign", help="Kies een nieuw vrij poortblok en werk het project bij"),
+    adopt: bool = typer.Option(False, "--adopt", help="Neem de poorten uit .env over in het manifest en het register"),
+):
+    """Toon de poorten van dit project, of wijs een nieuw poortblok toe."""
+    from appcreator.core.port_commands import adopt_ports, reassign_ports, show_ports
+
+    target = (project_dir or Path.cwd()).resolve()
+    if reassign and adopt:
+        print_error("Kies --reassign of --adopt, niet allebei.")
+        raise typer.Exit(1)
+    if reassign:
+        reassign_ports(target)
+    elif adopt:
+        adopt_ports(target)
+    show_ports(target)
 
 
 @app.command(name="start")

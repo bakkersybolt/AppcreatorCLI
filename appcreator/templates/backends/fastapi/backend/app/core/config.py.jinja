@@ -14,9 +14,11 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    # Origins that may call the API from a browser (the Vite dev server by default)
+    CORS_ORIGINS: list[str] = [{% if frontend == "vue3" %}"http://localhost:{{ ports.frontend }}"{% endif %}]
 
     {% if database == "postgres" %}
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgrespassword@localhost:5432/{{ app_slug }}_db"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgrespassword@localhost:{{ ports.postgres }}/{{ app_slug }}_db"
     {% elif database == "sqlite" %}
     DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
     {% else %}

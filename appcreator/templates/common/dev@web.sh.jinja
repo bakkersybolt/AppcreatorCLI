@@ -13,14 +13,17 @@ trap cleanup EXIT INT TERM
 
 echo "🚀 AppCreator Dev Server starten voor {{ app_naam }}..."
 
-{% if database == "postgres" %}
-# Lees POSTGRES_PORT uit de .env in de projectroot (dezelfde die Docker Compose gebruikt)
+# Lees de poorten uit de .env in de projectroot (dezelfde die Docker Compose en Vite gebruiken)
 if [ -f .env ]; then
     set -a
     . ./.env
     set +a
 fi
+BACKEND_PORT="${BACKEND_PORT:-{{ ports.backend }}}"
+FRONTEND_PORT="${FRONTEND_PORT:-{{ ports.frontend }}}"
+export BACKEND_PORT FRONTEND_PORT
 
+{% if database == "postgres" %}
 # 1. Database (PostgreSQL) starten via Docker
 if command -v docker &> /dev/null && [ -f docker-compose.yml ]; then
     echo "📦 PostgreSQL container starten..."
@@ -30,13 +33,13 @@ fi
 
 {% if backend == "fastapi" %}
 # 2. FastAPI Backend starten
-echo "🐍 Backend starten op http://localhost:8000..."
+echo "🐍 Backend starten op http://localhost:${BACKEND_PORT}..."
 if [ -f "backend/.venv/bin/uvicorn" ]; then
-    (cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000 2>&1 | sed -e 's/^/[backend ] /') &
+    (cd backend && .venv/bin/uvicorn app.main:app --reload --port "$BACKEND_PORT" 2>&1 | sed -e 's/^/[backend ] /') &
 elif [ -f "backend/.venv/bin/python" ]; then
-    (cd backend && .venv/bin/python -m uvicorn app.main:app --reload --port 8000 2>&1 | sed -e 's/^/[backend ] /') &
+    (cd backend && .venv/bin/python -m uvicorn app.main:app --reload --port "$BACKEND_PORT" 2>&1 | sed -e 's/^/[backend ] /') &
 elif command -v uvicorn &> /dev/null; then
-    (cd backend && uvicorn app.main:app --reload --port 8000 2>&1 | sed -e 's/^/[backend ] /') &
+    (cd backend && uvicorn app.main:app --reload --port "$BACKEND_PORT" 2>&1 | sed -e 's/^/[backend ] /') &
 else
     echo "⚠️  Geen uvicorn gevonden in backend/.venv. Installeer dependencies met: cd backend && pip install -r requirements.txt"
 fi
@@ -44,7 +47,7 @@ fi
 
 {% if frontend == "vue3" %}
 # 3. Vue 3 Frontend starten
-echo "⚡ Frontend starten op http://localhost:5173..."
+echo "⚡ Frontend starten op http://localhost:${FRONTEND_PORT}..."
 if [ -d "frontend" ]; then
     if command -v pnpm &> /dev/null && [ -f "frontend/pnpm-lock.yaml" ]; then
         (cd frontend && pnpm run dev 2>&1 | sed -e 's/^/[frontend] /') &
@@ -57,14 +60,14 @@ fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✨ Services draaien:"
 {% if frontend == "vue3" %}
-echo "   • Frontend UI:   http://localhost:5173"
+echo "   • Frontend UI:   http://localhost:${FRONTEND_PORT}"
 {% endif %}
 {% if backend == "fastapi" %}
-echo "   • Backend API:   http://localhost:8000"
-echo "   • API Docs:      http://localhost:8000/docs"
+echo "   • Backend API:   http://localhost:${BACKEND_PORT}"
+echo "   • API Docs:      http://localhost:${BACKEND_PORT}/docs"
 {% endif %}
 {% if database == "postgres" %}
-echo "   • PostgreSQL:    localhost:${POSTGRES_PORT:-5432}"
+echo "   • PostgreSQL:    localhost:${POSTGRES_PORT:-{{ ports.postgres }}}"
 {% endif %}
 echo "   Druk op Ctrl+C om alle services te stoppen."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

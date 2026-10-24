@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 from rich.panel import Panel
 
 from appcreator.core.manifest import load_manifest
+from appcreator.core.ports import port_is_free, resolve_ports
 from appcreator.ui import console, print_error, print_info, print_warning
 
 
@@ -24,18 +25,17 @@ def _stream_output(stream, prefix: str):
         pass
 
 
-def _get_postgres_port(target_dir: Path) -> str:
-    """Returns the host port for PostgreSQL: environment variable, then root .env, then 5432."""
-    port = os.environ.get("POSTGRES_PORT")
-    if port:
-        return port
-    env_file = target_dir / ".env"
-    if env_file.is_file():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            key, sep, value = line.strip().partition("=")
-            if sep and key.strip() == "POSTGRES_PORT" and value.strip():
-                return value.strip().strip("'\"")
-    return "5432"
+def _check_ports_free(checks: List[tuple]) -> bool:
+    """Warns about every port that is already taken; returns False if any is."""
+    ok = True
+    for naam, port in checks:
+        if not port_is_free(port):
+            ok = False
+            print_warning(
+                f"Poort {port} ({naam}) is al in gebruik. Kijk met 'lsof -i :{port}' welk proces hem gebruikt, "
+                "stop dat proces, of kies een nieuw poortblok met 'appcreator ports --reassign'."
+            )
+    return ok
 
 
 def run_dev_server(project_dir: Optional[Path] = None):
@@ -60,7 +60,18 @@ def run_dev_server(project_dir: Optional[Path] = None):
         )
         return
 
-    postgres_port = _get_postgres_port(target_dir)
+    ports, _ = resolve_ports(target_dir)
+    postgres_port = ports.postgres
+
+    # Stop early when the app's own ports are taken: otherwise uvicorn/Vite fail halfway or,
+    # worse, the frontend talks to another app's backend.
+    checks = []
+    if has_backend:
+        checks.append(("backend", ports.backend))
+    if has_frontend:
+        checks.append(("frontend", ports.frontend))
+    if checks and not _check_ports_free(checks):
+        return
 
     # 1. Database (PostgreSQL via Docker Compose)
     if has_postgres and (target_dir / "docker-compose.yml").is_file():
@@ -82,7 +93,7 @@ def run_dev_server(project_dir: Optional[Path] = None):
                         print_warning(
                             f"Poortconflict gedetecteerd: Poort {postgres_port} is al in gebruik door een andere container of service!\n"
                             f"Controleer met 'docker ps' welke container op poort {postgres_port} draait (bijv. 'docker stop <naam>'), "
-                            "of kies een andere POSTGRES_PORT in de .env in de projectroot (en pas DATABASE_URL in backend/.env aan)."
+                            "of kies een nieuw poortblok met 'appcreator ports --reassign'."
                         )
                     else:
                         console.print(f"[dim red]Kon database container niet starten: {err_output}[/dim red]")
@@ -104,13 +115,13 @@ def run_dev_server(project_dir: Optional[Path] = None):
         venv_python = backend_dir / ".venv" / "bin" / "python"
 
         if venv_uvicorn.is_file():
-            backend_cmd = [str(venv_uvicorn), "app.main:app", "--reload", "--port", "8000"]
+            backend_cmd = [str(venv_uvicorn), "app.main:app", "--reload", "--port", str(ports.backend)]
         elif venv_python.is_file():
-            backend_cmd = [str(venv_python), "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"]
+            backend_cmd = [str(venv_python), "-m", "uvicorn", "app.main:app", "--reload", "--port", str(ports.backend)]
         elif shutil.which("uvicorn"):
-            backend_cmd = ["uvicorn", "app.main:app", "--reload", "--port", "8000"]
+            backend_cmd = ["uvicorn", "app.main:app", "--reload", "--port", str(ports.backend)]
         else:
-            backend_cmd = ["python3", "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"]
+            backend_cmd = ["python3", "-m", "uvicorn", "app.main:app", "--reload", "--port", str(ports.backend)]
 
         try:
             env = os.environ.copy()
@@ -142,9 +153,14 @@ def run_dev_server(project_dir: Optional[Path] = None):
         node_bin = "pnpm" if (frontend_dir / "pnpm-lock.yaml").is_file() and shutil.which("pnpm") else "npm"
 
         try:
+            f_env = os.environ.copy()
+            f_env["FRONTEND_PORT"] = str(ports.frontend)
+            f_env["BACKEND_PORT"] = str(ports.backend)
+            f_env.setdefault("VITE_PROXY_TARGET", f"http://localhost:{ports.backend}")
             f_proc = subprocess.Popen(
                 [node_bin, "run", "dev"],
                 cwd=str(frontend_dir),
+                env=f_env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -165,10 +181,10 @@ def run_dev_server(project_dir: Optional[Path] = None):
     # Dashboard Banner tonen
     details = ["[bold white]AppCreator Local Dev Environment[/bold white]\n"]
     if has_frontend:
-        details.append("• [bold green]Frontend UI:[/]   http://localhost:5173")
+        details.append(f"• [bold green]Frontend UI:[/]   http://localhost:{ports.frontend}")
     if has_backend:
-        details.append("• [bold cyan]Backend API:[/]   http://localhost:8000")
-        details.append("• [bold cyan]API Docs:[/]      http://localhost:8000/docs")
+        details.append(f"• [bold cyan]Backend API:[/]   http://localhost:{ports.backend}")
+        details.append(f"• [bold cyan]API Docs:[/]      http://localhost:{ports.backend}/docs")
     if has_postgres:
         details.append(f"• [bold yellow]Database:[/]      PostgreSQL op localhost:{postgres_port}")
     details.append("\n[dim]Druk op Ctrl+C om alle services gelijktijdig te stoppen.[/dim]")

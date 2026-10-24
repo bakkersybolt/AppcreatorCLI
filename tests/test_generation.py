@@ -318,44 +318,6 @@ def test_frontend_files_rendered_with_slug(tmp_dir):
     assert "Mijn Web_App" in (target / "backend" / "app" / "__init__.py").read_text()
 
 
-def test_root_env_with_postgres_port_only_for_postgres(tmp_dir):
-    pg_target = tmp_dir / "PgApp"
-    assemble_project(
-        app_naam="PgApp",
-        category="backend",
-        stack={"backend": "fastapi", "database": "postgres", "entiteiten": []},
-        skills=[],
-        target_dir=pg_target,
-    )
-    assert "POSTGRES_PORT=5432" in (pg_target / ".env").read_text()
-    assert "POSTGRES_PORT=5432" in (pg_target / ".env.example").read_text()
-    assert "${POSTGRES_PORT:-5432}:5432" in (pg_target / "docker-compose.yml").read_text()
-    assert "POSTGRES_PORT=" not in (pg_target / "backend" / ".env").read_text()
-
-    sqlite_target = tmp_dir / "SqliteApp"
-    assemble_project(
-        app_naam="SqliteApp",
-        category="backend",
-        stack={"backend": "fastapi", "database": "sqlite", "entiteiten": []},
-        skills=[],
-        target_dir=sqlite_target,
-    )
-    assert not (sqlite_target / ".env").exists()
-
-
-def test_dev_runner_reads_postgres_port(tmp_dir, monkeypatch):
-    from appcreator.core.dev_runner import _get_postgres_port
-
-    monkeypatch.delenv("POSTGRES_PORT", raising=False)
-    assert _get_postgres_port(tmp_dir) == "5432"
-
-    (tmp_dir / ".env").write_text("# commentaar\nPOSTGRES_PORT=5433\n")
-    assert _get_postgres_port(tmp_dir) == "5433"
-
-    monkeypatch.setenv("POSTGRES_PORT", "6000")
-    assert _get_postgres_port(tmp_dir) == "6000"
-
-
 def test_non_jinja_file_is_copied_unchanged(tmp_dir):
     from appcreator.core.generator import render_file
 

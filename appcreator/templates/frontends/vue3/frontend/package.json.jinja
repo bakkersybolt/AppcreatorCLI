@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
-    "generate:types": "openapi-typescript http://localhost:8000/openapi.json --output src/types/schema.d.ts",
+    "generate:types": "openapi-typescript http://localhost:${BACKEND_PORT:-{{ ports.backend }}}/openapi.json --output src/types/schema.d.ts",
     "test": "vitest run",
     "lint": "eslint . --fix",
     "format": "prettier --write src/"

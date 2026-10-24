@@ -7,6 +7,5 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 5173
-
+# The dev server port comes from FRONTEND_PORT (see docker-compose.yml)
 CMD ["npm", "run", "dev", "--", "--host"]
