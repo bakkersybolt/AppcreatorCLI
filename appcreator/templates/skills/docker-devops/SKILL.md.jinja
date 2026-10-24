@@ -8,9 +8,11 @@ description: "Werkt met de Dockerfiles en docker-compose.yml van dit project: se
 ## Wat er al staat
 
 - `docker-compose.yml` in de projectroot, met de services die bij de gekozen stack horen.
-- `backend/Dockerfile`{% if frontend %} en `frontend/Dockerfile`{% endif %}. Dit {% if frontend %}zijn ontwikkelimages: ze draaien{% else %}is een ontwikkelimage: het draait{% endif %} met hot reload en de broncode is als volume gekoppeld.
+- `Dockerfile.dev` in `backend/`{% if frontend %} en `frontend/`{% endif %}: ontwikkelimages met hot reload; de broncode is als volume gekoppeld. `docker-compose.yml` gebruikt deze.
+- `Dockerfile` in `backend/`{% if frontend %} en `frontend/`{% endif %}: productie-images{% if frontend %} (de frontend is een multi-stage build: Node bouwt, nginx serveert `dist/` met `nginx.conf`){% endif %}. De backend draait migraties bij het starten als Alembic is ingericht, en schrijft blijvende bestanden alleen onder `/data`.
+- De poorten komen uit de `.env` in de projectroot (`BACKEND_PORT`{% if frontend %}, `FRONTEND_PORT`{% endif %}{% if database == "postgres" %}, `POSTGRES_PORT`{% endif %}); zie `appcreator ports`.
 {%- if database == "postgres" %}
-- PostgreSQL heeft een healthcheck en een named volume (`postgres_data`). De host-poort komt uit `POSTGRES_PORT` in de `.env` in de projectroot.
+- PostgreSQL heeft een healthcheck en een named volume (`postgres_data`). Het compose-project heet vast `{{ app_slug }}`, dus ook vanuit een git-worktree ontstaat geen tweede container.
 
 Het wachtwoord `postgrespassword` in `docker-compose.yml` is alleen bedoeld voor lokale ontwikkeling.
 {%- endif %}
@@ -41,22 +43,19 @@ docker compose down
 1. `docker compose ps`: draait de service, en is hij `healthy`?
 2. `docker compose logs <service>`: wat is de laatste foutmelding?
 {%- if database == "postgres" %}
-3. Poort bezet (`port is already allocated`): kies een andere `POSTGRES_PORT` in de `.env` en pas de poort in `DATABASE_URL` in `backend/.env` aan.
+3. Poort bezet (`port is already allocated`): kijk met `docker ps` en `lsof -i :<poort>` wie de poort gebruikt, of kies een nieuw poortblok met `appcreator ports --reassign` (dat werkt ook `DATABASE_URL` in `backend/.env` bij).
 4. Backend kan de database niet bereiken: binnen Compose is de hostnaam `postgres`, buiten Compose `localhost`.
 {%- else %}
-3. Poort bezet (`port is already allocated`): zoek met `docker ps` welke container de poort gebruikt.
+3. Poort bezet (`port is already allocated`): zoek met `docker ps` welke container de poort gebruikt, of kies een nieuw poortblok met `appcreator ports --reassign`.
 {%- endif %}
 
 ## Naar productie
 
-Vraag eerst waar de applicatie gaat draaien. Pas daarna de images aan:
+De productie-images staan klaar (`Dockerfile`). Vraag waar de applicatie gaat draaien{% if features.get("hobbyserver") %}; voor de hobbyserver is er de skill `hobbyserver-deploy`{% endif %}. Controleer daarna:
 
-- **Backend:** geen `--reload`, geen gekoppelde broncode, draaien als niet-root gebruiker.
-{%- if frontend %}
-- **Frontend:** een multi-stage build: bouwen met Node (`npm run build`) en de map `dist/` serveren met een lichte webserver zoals Nginx.
-{%- endif %}
+- **Backend:** draaien als niet-root gebruiker als de hosting dat vraagt.
 - **Geheimen:** wachtwoorden en sleutels komen uit de omgeving of een secrets-voorziening, niet uit `docker-compose.yml` of een gecommit `.env`-bestand.
-- **Instellingen:** zet `DEBUG=False` en beperk de CORS-origins in `backend/app/main.py` tot het eigen domein.
+- **Instellingen:** zet `DEBUG=False` en beperk `CORS_ORIGINS` tot het eigen domein (zie `docs/configuratie.md`).
 {%- if database != "none" %}
 - **Database:** gebruik migraties in plaats van `create_all`.
 {%- endif %}

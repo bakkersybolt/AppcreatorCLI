@@ -27,7 +27,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: {{ app_slug }}-backend
     restart: unless-stopped
     ports:
@@ -55,7 +55,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: {{ app_slug }}-frontend
     restart: unless-stopped
     ports:

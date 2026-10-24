@@ -123,6 +123,9 @@ def test_no_hardcoded_default_ports_in_generated_project(tmp_path):
             continue
         for nr, regel in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             schoon = toegestaan.sub("", regel)
+            if path.name.startswith("Dockerfile"):
+                schoon = schoon.replace("--port 8000", "")  # port inside the container
+
             assert not re.search(r"(?<!\d)(8000|5173|5432)(?!\d)", schoon), f"{path.relative_to(target)}:{nr}: {regel}"
 
 
