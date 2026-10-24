@@ -51,8 +51,16 @@ def render_file(src_path: Path, dst_path: Path, context: Dict[str, Any]):
     else:
         shutil.copy2(src_path, dst_path)
 
-    if dst_path.name.endswith(".sh"):
+    if dst_path.name.endswith(".sh") or _has_shebang(dst_path):
         dst_path.chmod(dst_path.stat().st_mode | 0o111)
+
+
+def _has_shebang(path: Path) -> bool:
+    try:
+        with open(path, "rb") as f:
+            return f.read(2) == b"#!"
+    except OSError:
+        return False
 
 
 # Conditional files: a tag like `@frontend` in a file or folder name means "only generate

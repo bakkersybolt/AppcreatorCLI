@@ -100,6 +100,10 @@ def init_git_repository(target_dir: Path, initial_commit: bool = True) -> bool:
                 cwd=str(target_dir),
                 capture_output=True,
             )
+        # Versioned git hooks (.githooks/pre-commit); enabled after the initial commit,
+        # because dependencies may not be installed yet.
+        if (target_dir / ".githooks").is_dir():
+            subprocess.run(["git", "config", "core.hooksPath", ".githooks"], check=True, cwd=str(target_dir), capture_output=True)
         return True
     except subprocess.CalledProcessError as e:
         console.print(f"Waarschuwing bij Git initialisatie: {_format_process_error(e)}", style="dim red", markup=False)

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Versioned git pre-commit hook (enabled with `git config core.hooksPath .githooks`).
+# Runs the documentation checks when documentation is part of the commit, so broken links,
+# missing index entries or over-long articles never reach main. Skips quietly when the
+# dependencies are not installed yet.
+set -euo pipefail
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+{% if backend %}
+if echo "$staged" | grep -qE '^(docs/.*\.md|backend/app/core/config\.py)$'; then
+  if [ -x backend/.venv/bin/pytest ]; then
+    echo "pre-commit: documentatie controleren (backend/tests/test_docs.py)"
+    (cd backend && .venv/bin/pytest -q tests/test_docs.py)
+  fi
+fi
+{% endif %}
+{% if frontend %}
+if echo "$staged" | grep -qE '^frontend/src/(content/help/|router/)'; then
+  if [ -x frontend/node_modules/.bin/vitest ]; then
+    echo "pre-commit: hulpartikelen controleren (content/help/__tests__)"
+    (cd frontend && node_modules/.bin/vitest run src/content/help/__tests__)
+  fi
+fi
+{% endif %}
+exit 0

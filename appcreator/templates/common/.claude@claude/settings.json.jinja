@@ -1,0 +1,68 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint-changed-file.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+{%- if features.get("hobbyserver") %}
+          {
+            "type": "command",
+            "command": "GUARD_ONLY_SSH=1 bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/hobbyserver-guard.sh\""
+          },
+{%- endif %}
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/worktree-shell-guard.py\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+{%- if frontend %}
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(npm run test)",
+      "Bash(npm run test -- *)",
+      "Bash(npm --prefix frontend run lint)",
+      "Bash(npm --prefix frontend run build)",
+      "Bash(npm --prefix frontend run test)",
+      "Bash(npm --prefix frontend run test -- *)",
+      "Bash(npx vitest run)",
+{%- endif %}
+{%- if backend or cli %}
+      "Bash(.venv/bin/pytest)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(.venv/bin/ruff check)",
+      "Bash(.venv/bin/ruff check *)",
+      "Bash(.venv/bin/ruff format --check)",
+      "Bash(.venv/bin/ruff format --check *)",
+{%- endif %}
+{%- if hardware %}
+      "Bash(pio run)",
+      "Bash(pio test)",
+{%- endif %}
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git merge *)",
+      "Bash(git worktree add *)",
+      "Bash(git worktree remove *)"
+    ]
+  }
+}

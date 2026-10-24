@@ -130,6 +130,9 @@ Er werken vaak meerdere sessies tegelijk aan dit project. De hoofdmap staat op `
 
 - **Bouw je iets buiten een sprint** (todo, fix, styling), start dan in een eigen worktree naast de hoofdmap: `git worktree add ../{{ app_slug }}-<onderwerp> -b <type>/<onderwerp> main`. Link de afhankelijkheden in plaats van ze opnieuw te installeren: `ln -s <hoofdmap>/backend/.venv backend/.venv`{% if frontend %} en `ln -s <hoofdmap>/frontend/node_modules frontend/node_modules`{% endif %}, en kopieer `backend/.env` en `.env`.
 - **Eigen poort{% if database != "none" %} en testdatabase{% endif %}:** start de backend in een worktree op een eigen poort uit het agentblok ({{ ports.agent_start }}–{{ ports.agent_end }}){% if frontend %} en wijs de frontend ernaar met `VITE_PROXY_TARGET=http://localhost:<poort>`{% endif %}.{% if database == "postgres" %} Zet in de `backend/.env` van je worktree een eigen `TEST_DATABASE_URL` (naam met "test", bijv. `{{ app_slug | replace("-", "_") }}_<onderwerp>_test`).{% endif %}
+{%- if assistant != "claude" %}
+- **Shell in een worktree:** draai commando's los vanuit de root van de worktree: geen `cd x && y`, geen `git -C`, geen heredocs en geen shell-lussen.{% if database == "postgres" %} `psql` staat niet op de host: gebruik `docker exec {{ app_slug }}-postgres psql -U postgres -d <database>`.{% endif %}
+{%- endif %}
 - **Controleer eerst `git status`.** Staan er wijzigingen die niet van jou zijn, raak ze dan niet aan (niet committen, niet weggooien, niet van branch wisselen) en meld het aan de gebruiker.
 - **Klaar:** mergen naar `main` in de hoofdmap (na akkoord), daarna de branch verwijderen en de worktree opruimen met `git worktree remove`. Pushen alleen na expliciet akkoord.
 {%- endif %}
