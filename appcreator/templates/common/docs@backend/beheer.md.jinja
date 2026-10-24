@@ -1,0 +1,33 @@
+---
+onderwerp: Beheer
+categorie: beheer
+trefwoorden: [beheer, beheertaken, onderhoud, database, poorten, problemen, storing]
+code:
+  - backend/app/
+bijgewerkt: start
+---
+
+# Beheer
+
+Taken voor wie de app beheert, en wat te doen bij veelvoorkomende problemen. Elke nieuwe beheertaak of elk nieuw CLI-commando komt in deze tabel (skill `documentatie`).
+
+## Beheertaken
+
+| Taak | Hoe | Wie |
+| :--- | :--- | :--- |
+| Poorten bekijken of een nieuw poortblok kiezen | `appcreator ports` / `appcreator ports --reassign` | ontwikkelaar |
+{%- if database == "postgres" %}
+| Database starten | `docker compose up -d postgres` | ontwikkelaar |
+| Database leegmaken (ontwikkeling) | `docker compose down -v` (verwijdert alle gegevens) | ontwikkelaar |
+{%- elif database == "sqlite" %}
+| Database leegmaken (ontwikkeling) | `backend/app.db` verwijderen; de tabellen komen bij de volgende start terug | ontwikkelaar |
+{%- endif %}
+
+## Problemen
+
+| Probleem | Oplossing |
+| :--- | :--- |
+| `appcreator dev` meldt dat een poort in gebruik is | `lsof -i :<poort>` toont het proces; stop het, of kies een nieuw blok met `appcreator ports --reassign` |
+{%- if frontend %}
+| De frontend krijgt geen antwoord van de API | Draait de backend op `BACKEND_PORT`? Staat `VITE_PROXY_TARGET` goed? Zie [configuratie.md](configuratie.md) |
+{%- endif %}

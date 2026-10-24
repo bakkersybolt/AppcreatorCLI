@@ -1,9 +1,8 @@
 ---
 name: brainstorm-architect
-description: "Ontwerpsessie in rondes die het doel, de gebruikers, het datamodel, de API en bij een frontend de schermen van de applicatie uitdiept en vastlegt in .docs/ontwerp.md en .docs/bouwplan.md. Gebruik direct na /init-project, of wanneer de gebruiker de applicatie wil uitdenken, het ontwerp wil aanscherpen of een eerder gestarte ontwerpsessie wil hervatten."
+description: "Ontwerpsessie in rondes die het doel, de gebruikers, het datamodel, de API en bij een frontend de schermen van de applicatie uitdiept en vastlegt in .docs/ontwerp/ (één bestand per onderdeel) en .docs/sprints/overzicht.md. Gebruik direct na /init-project, of wanneer de gebruiker de applicatie wil uitdenken, het ontwerp wil aanscherpen of een eerder gestarte ontwerpsessie wil hervatten."
 ---
-{%- set ronde_scope = 7 if frontend else 5 %}
-{%- set ronde_bouw = 8 if frontend else 6 %}
+{%- set ronde_scope = ontwerp.scope.nr %}
 
 # Brainstorm-architect
 
@@ -11,8 +10,16 @@ Dit is een ontwerpsessie. Schrijf in deze skill geen applicatiecode: de uitkomst
 
 ## Voorbereiding
 
-1. Bestaat `.docs/ontwerp.md` al? Lees het en ga verder bij de eerste ronde die onder "Voortgang" niet is afgevinkt. Vat eerst in een paar zinnen samen wat al vaststaat.
-2. Bestaat het nog niet? Kopieer [references/ontwerp-sjabloon.md](references/ontwerp-sjabloon.md) uit deze skillmap naar `.docs/ontwerp.md`.
+1. Bestaat `.docs/ontwerp/README.md` al? Lees het en ga verder bij de eerste ronde die onder "Voortgang" niet is afgevinkt. Vat eerst in een paar zinnen samen wat al vaststaat.
+2. Bestaat het nog niet? Kopieer de map [references/ontwerp/](references/ontwerp/README.md) uit deze skillmap naar `.docs/ontwerp/`. Het ontwerp staat bewust in losse bestanden: een agent die aan het datamodel werkt, leest alleen `{{ ontwerp.datamodel.bestand }}` en niet het hele ontwerp.
+
+| Ronde | Bestand in `.docs/ontwerp/` |
+| :--- | :--- |
+{% for deel in ontwerp_delen -%}
+| {{ deel.nr }}. {{ deel.titel }} | `{{ deel.bestand }}` |
+{% endfor -%}
+| {{ ronde_bouw }}. Bouwvolgorde | `.docs/sprints/overzicht.md` (sjabloon: [references/sprints-overzicht.md](references/sprints-overzicht.md)) |
+
 3. Lees `{{ context_file }}` voor de gekozen stack.
 
 ## Zo voer je het gesprek
@@ -20,7 +27,7 @@ Dit is een ontwerpsessie. Schrijf in deze skill geen applicatiecode: de uitkomst
 - **Eén vraag tegelijk.** Wacht op het antwoord voordat je de volgende stelt.
 - **Doe steeds een voorstel.** Leid uit wat je al weet een concreet antwoord af en leg dat voor, zodat de gebruiker alleen hoeft te corrigeren. Vanaf ronde 3 stel je zelf het ontwerp voor op basis van de eerdere rondes.
 - **Vraag door bij vage antwoorden.** "Gebruiksvriendelijk" of "beheer van klanten" is geen antwoord waar je op kunt bouwen. Vraag naar een voorbeeld: wie doet wat, en wat ziet die persoon daarna?
-- **Benoem aannames.** Vul je zelf iets in, zeg dat dan en noteer het onder "Open vragen en aannames".
+- **Benoem aannames.** Vul je zelf iets in, zeg dat dan en noteer het in het bestand van die ronde. Een vraag die de gebruiker nu niet kan beantwoorden en die later het bouwen blokkeert, leg je vast in `.docs/open-vragen/` volgens de skill `open-vragen`; ga daarna verder met een voorlopige aanname.
 - **Houd de eerste versie klein.** Stel bij elke wens de vraag of die in de eerste versie moet. Wat afvalt komt in ronde {{ ronde_scope }} onder "buiten scope".
 {%- if assistant == "antigravity" %}
 - Tip voor de gebruiker: met `/grill-me` stelt de assistent de vragen als een interview.
@@ -30,7 +37,8 @@ Sluit elke ronde zo af:
 
 1. Geef een samenvatting van wat is besloten.
 2. Vraag of het klopt en verwerk correcties.
-3. Schrijf de ronde weg in `.docs/ontwerp.md` en vink hem af onder "Voortgang". Doe dit direct, niet pas aan het einde: zo gaat er niets verloren als de sessie wordt onderbroken.
+3. Schrijf de ronde weg in het bijbehorende bestand in `.docs/ontwerp/` en vink hem af in `.docs/ontwerp/README.md` onder "Voortgang". Doe dit direct, niet pas aan het einde: zo gaat er niets verloren als de sessie wordt onderbroken.
+4. Houd elk bestand over één onderwerp. Wordt een bestand erg lang (bijv. een datamodel met veel entiteiten), splits het dan in een submap (`{{ ontwerp.datamodel.bestand[:-3] }}/<entiteit>.md`) en verwijs ernaar vanuit het hoofdbestand.
 
 ## Ronde 1: Doel
 
@@ -42,7 +50,7 @@ Begin hier, ook als de gebruiker meteen over schermen of tabellen wil praten. Zo
 
 Sluit af door het doel in drie zinnen in je eigen woorden terug te geven: wat het is, voor wie, en waaraan je ziet dat het werkt. Ga pas verder als de gebruiker dat bevestigt.
 
-Schrijf na akkoord ook een korte sectie "Doel & scope" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}, met het doel in twee of drie zinnen en de regel dat het volledige ontwerp in `.docs/ontwerp.md` staat. Zet het ontwerp zelf daar niet in: dat bestand wordt elke sessie geladen.
+Schrijf na akkoord ook een korte sectie "Doel & scope" in {% for f in context_files %}`{{ f }}`{% if not loop.last %} en {% endif %}{% endfor %}, met het doel in twee of drie zinnen en de regel dat het volledige ontwerp in `.docs/ontwerp/` staat. Zet het ontwerp zelf daar niet in: dat bestand wordt elke sessie geladen.
 
 ## Ronde 2: Gebruikers en stromen
 
@@ -89,6 +97,8 @@ Controleer dat elke stroom uit ronde 2 van begin tot eind over deze schermen loo
 - **Startpunt:** wat ziet een gebruiker direct na het inloggen of openen?
 - **Uitstraling:** welke sfeer en welk kleurenpalet? Vraag naar een voorbeeld van een applicatie die de gebruiker mooi vindt.
 - **Apparaten:** wordt het vooral op een telefoon, een tablet of een desktop gebruikt?
+
+Leg na akkoord de uitstraling direct vast in code met de skill `design-system` (modus "Uitstraling vastleggen"): die vult de design tokens en `design-rules.md`, zodat elk scherm dat later gebouwd wordt dezelfde stijl volgt.
 {%- endif %}
 
 ## Ronde {{ ronde_scope }}: Randvoorwaarden en scope
@@ -106,23 +116,13 @@ Verdeel de eerste versie in Slices. Een Slice is één functie die van database 
 - Plan inloggen vroeg als andere Slices ervan afhangen.
 - Houd Slices klein: liever acht kleine dan drie grote.
 
-Schrijf de volgorde na akkoord naar `.docs/bouwplan.md`:
+- Groepeer de plakken in sprints van twee tot vier plakken die samen een afgerond geheel vormen (`sprint-<nr>-<onderwerp>`, bijv. `sprint-1-basis`).
 
-```markdown
-# Bouwplan
-
-- [ ] **1. <naam van de plak>:** <wat de gebruiker hierna kan>
-  - Entiteiten: <...>
-  - Endpoints: <...>
-{%- if frontend %}
-  - Schermen: <...>
-{%- endif %}
-- [ ] **2. <naam van de plak>:** <...>
-```
+Schrijf de volgorde na akkoord naar `.docs/sprints/overzicht.md`, volgens [references/sprints-overzicht.md](references/sprints-overzicht.md). De sprintmappen zelf maakt de skill `sprint-plan` aan bij het voorbereiden van elke sprint.
 
 ## Afronden
 
-1. Lees `.docs/ontwerp.md` in zijn geheel na op tegenstrijdigheden tussen de rondes en los die met de gebruiker op.
-2. Loop "Open vragen en aannames" langs: wat moet nu worden beslist, en wat kan wachten?
+1. Lees alle bestanden in `.docs/ontwerp/` na op tegenstrijdigheden tussen de rondes en los die met de gebruiker op.
+2. Loop `.docs/open-vragen/` langs: wat moet nu worden beslist, en wat kan wachten?
 3. Vervang de inleidende alinea van `README.md` door het doel. Laat de installatie- en startinstructies staan.
-4. Meld dat het ontwerp klaar is en dat het bouwen begint met `/feature-builder`.
+4. Meld dat het ontwerp klaar is en dat het bouwen per sprint begint met `/sprint-plan`. Voor één losse plak buiten een sprint is er `/feature-builder`.

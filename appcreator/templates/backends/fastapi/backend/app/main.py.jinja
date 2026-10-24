@@ -1,29 +1,31 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
+
+{% if database != "none" and entiteiten -%}
+from app import models  # noqa: F401 - Zorgt dat Base.metadata alle entiteiten registreert
+{% endif -%}
 from app.api.v1.router import api_router
+from app.core.config import settings
+{%- if database != "none" %}
 from app.db.base import Base
-{% if database != "none" %}
 from app.db.session import engine
-{% if entiteiten %}
-import app.models  # noqa: F401 - Zorgt dat Base.metadata alle entiteiten registreert
-{% endif %}
-{% endif %}
+{%- endif %}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logica
-    {% if database != "none" %}
+    {%- if database != "none" %}
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    {% endif %}
+    {%- endif %}
     yield
     # Shutdown logica
-    {% if database != "none" %}
+    {%- if database != "none" %}
     await engine.dispose()
-    {% endif %}
+    {%- endif %}
 
 
 app = FastAPI(
@@ -36,7 +38,7 @@ app = FastAPI(
 # CORS Middleware configuratie
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

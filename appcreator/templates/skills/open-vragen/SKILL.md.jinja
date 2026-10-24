@@ -1,0 +1,70 @@
+---
+name: open-vragen
+description: "Legt open vragen en onduidelijkheden waar nog een besluit over nodig is vast in .docs/open-vragen/, toont ze en verwerkt een antwoord in het ontwerp of bouwplan. Gebruik wanneer je tijdens het bouwen op een onduidelijkheid of tegenstrijdigheid in ontwerp of bouwplan stuit die een keuze van de gebruiker vraagt, wanneer de gebruiker een vraag wil parkeren ('zet dit bij de open vragen'), vraagt welke vragen openstaan, of een vraag beantwoordt."
+---
+
+# Open vragen
+
+Een open vraag is een **besluit dat nog genomen moet worden**. Dat is iets anders dan een todo:
+
+| | Open vraag (`.docs/open-vragen/`) | Todo (`.todos/`, skill `todo-beheer`) |
+| :--- | :--- | :--- |
+| Wat | Er moet eerst gekozen worden: het ontwerp zegt het niet, spreekt zichzelf tegen, of de code laat meerdere redelijke keuzes toe | Het is duidelijk wat er moet gebeuren, het valt alleen buiten de huidige taak |
+| Voorbeeld | "Mag een klant een bestelling annuleren nadat die is verzonden?" | "Index op `email` toevoegen" |
+| Klaar als | De gebruiker heeft beslist en het besluit staat in het ontwerp of bouwplan | Het werk is gedaan |
+
+Twijfel je? Kun je het werk uitvoeren zonder de gebruiker iets te vragen, dan is het een todo.
+
+## Vastleggen
+
+1. **Zoek dubbelingen:** lees de frontmatter van `.docs/open-vragen/*.md`. Gaat een bestaande vraag over hetzelfde, vul die dan aan.
+2. **Schrijf het bestand** `.docs/open-vragen/<slug>.md`. De slug is Nederlands, kebab-case en beschrijft de vraag (`bestelling-annuleren-na-verzending.md`). Gebruik dit sjabloon:
+
+```markdown
+---
+aangemaakt: JJJJ-MM-DD
+bron: agent | gebruiker
+blokkeert: <sprint en plak, bijv. "sprint-3 plak 10"> | kan wachten
+gerelateerd:
+  - <pad naar ontwerpbestand, bouwplan of code>
+---
+
+# <De vraag, eindigend op een vraagteken>
+
+## Context
+
+Waar je het tegenkwam (welke taak, welk bestand), wat het ontwerp er nu over zegt en waarom dat niet volstaat. Feiten, geen vermoedens; schrijf erbij als je iets niet zeker weet.
+
+## Opties
+
+1. **<optie> (aanbevolen)**: <gevolg en afweging>
+2. **<optie>**: <gevolg en afweging>
+
+## Besluit
+
+_Nog open._
+```
+
+3. **Bron:** `agent` als je het zelf tegenkwam, `gebruiker` als de gebruiker de vraag inbracht. Een vraag van de gebruiker zonder opties: vul zelf opties met een aanbeveling in, of laat de sectie weg als je die niet redelijk kunt bedenken.
+4. **Ga verder of stop:**
+   - `kan wachten`: maak een redelijke tijdelijke keuze (meestal de aanbevolen optie), noteer die in de context ("Tijdelijk gekozen: …, zie `pad`") en werk door.
+   - Blokkeert het je huidige werk: bouw niet op gevoel. Werk je als subagent in een sprint, meld de vraag dan in je eindrapport aan de leider-agent (pad + één zin). Werk je direct met de gebruiker, stel de vraag dan meteen.
+5. **Meld** aan het eind van je antwoord in één regel per vraag welke open vragen je hebt aangemaakt of aangevuld, met hun pad.
+
+## Tonen
+
+Vraagt de gebruiker welke vragen openstaan: lees alle `.docs/open-vragen/*.md` en toon één tabel, blokkerende vragen bovenaan (in volgorde van sprint en plak), daarna "kan wachten":
+
+| Vraag | Blokkeert | Bron | Bestand |
+| :--- | :--- | :--- | :--- |
+
+Zijn er geen open vragen, zeg dat dan.
+
+## Beantwoorden
+
+1. Leg de vraag met de opties voor ({% if assistant == "claude" %}bij voorkeur met `AskUserQuestion`, {% endif %}aanbevolen optie eerst) of verwerk het antwoord dat de gebruiker al gaf.
+2. **Verwerk het besluit op de plek waar het hoort**: het betreffende bestand in `.docs/ontwerp/`, het bouwplan van de sprint in `.docs/sprints/sprint-<nr>-<onderwerp>/bouwplan.md` (onder "Besluiten") of beide. Het ontwerp moet het besluit bevatten; de vraag zelf is tijdelijk.
+3. Vraagt het besluit werk dat nu niet gebeurt: maak een todo (skill `todo-beheer`) of zet het in de juiste fase van het sprintbouwplan.
+4. Was er een tijdelijke keuze die nu anders uitvalt: noteer wat er in de code moet veranderen als todo of als taak in de lopende fase.
+5. Verwijder het vraagbestand. De geschiedenis staat in git.
+6. Meld in één regel waar het besluit is vastgelegd.

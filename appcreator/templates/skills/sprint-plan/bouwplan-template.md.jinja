@@ -1,0 +1,152 @@
+# Sprint <nr> – <Onderwerp>: bouwplan
+
+Overdrachtsdocument voor de fases van sprint <nr>. De sprint wordt uitgevoerd door een leider-agent die de fases aan
+subagents geeft (skill `sprint-plan`, mode 4). Start met: *"/sprint-plan uitvoeren sprint <nr>"*.
+
+Plakken uit [`overzicht.md`](../overzicht.md): <nummers en namen>. Verslagen per fase en van de sprint staan in deze
+map (`verslag-fase-<n>-<titel>.md`, `verslag-sprint.md`).
+
+## Doel van de sprint
+
+<Wat de gebruiker na deze sprint kan dat nu niet kan, in één alinea.>
+
+**Klaar als**: <zichtbaar of meetbaar resultaat, gekoppeld aan de stromen in `.docs/ontwerp/{{ ontwerp.stromen.bestand }}`>.
+
+## Huidige situatie
+
+- <wat er bestaat en hoe het werkt (`pad/naar/bestand.py`, `function`)>
+- <wat ontbreekt>
+- Gerelateerde todo's en open vragen: <`.todos/…`, `.docs/open-vragen/…`>
+
+## Gewenste situatie
+
+- **Flow**: <verwijzing naar de stromen in het ontwerp, plus wat in deze sprint wel en niet af is>
+- **Regels**: <statussen, condities, validatie, randgevallen>
+- **Datamodel**: <entiteiten uit `.docs/ontwerp/{{ ontwerp.datamodel.bestand }}` die in deze sprint komen>
+{%- if frontend %}
+- **UI**: <schermen uit `.docs/ontwerp/{{ ontwerp.schermen.bestand }}`>
+{%- endif %}
+
+## Buiten scope
+
+- <wat bewust niet in deze sprint zit, en in welke sprint het wel komt>
+
+## Werkafspraken (gelden voor elke fase)
+
+- Lees eerst `{{ context_file }}` en `{{ rules_dir }}/*.md`. **Alle code in het Engels** (identifiers, enums, comments,
+  commits); alleen teksten voor de gebruiker in het Nederlands. Geen `any`, geen suppressies zonder toelichting.
+- Problemen buiten de scope gaan als todo in `.todos/` (skill `todo-beheer`). Onduidelijkheden die een besluit
+  vragen gaan in `.docs/open-vragen/` (skill `open-vragen`).
+- **Git:** de sprint draait op `sprint/<nr>-<onderwerp>`, vanaf `main`. Parallelle tracks werken in een eigen
+  worktree op `sprint-<nr>/fase-<n>-<track>` en committen alleen daar. Alleen de leider merget. Pushen alleen
+  na akkoord van de gebruiker, aan het eind van de sprint. Engelse conventional commits met de Co-Authored-By-regel.
+- **Bestandseigendom:** een parallelle track wijzigt alleen de bestanden in zijn eigendomslijst. Modellen,
+  migraties, `models/__init__.py`{% if frontend %}, `api/v1/router.py`, `frontend/src/router/routes.ts` en `schema.d.ts`{% else %} en `api/v1/router.py`{% endif %} worden
+  alleen in fundament- of integratiefases gewijzigd.
+{%- if database != "none" %}
+- Elke modelwijziging krijgt een migratie (Alembic, zodra die is ingericht; tot dan maakt `create_all` alleen nieuwe
+  tabellen aan). Test een migratie eerst op een testdatabase (zie "Lokaal testen").
+{%- endif %}
+{%- if frontend %}
+- Na schema- of routewijzigingen: types genereren (`cd frontend && npm run generate:types` met de backend op
+  :{{ ports.backend }}, of `npx openapi-typescript http://localhost:<poort>/openapi.json --output src/types/schema.d.ts`).
+{%- endif %}
+- Controles: backend `.venv/bin/pytest` en `.venv/bin/ruff check .`{% if frontend %}; frontend `npm run lint`, `npm run build`
+  en `npm run test`{% endif %}. Voeg geen nieuwe meldingen toe.
+- **Shell in worktrees:** geen `cd x && y` of `cd x; y`, geen `git -C`, geen heredocs, geen shell-lussen{% if assistant == "claude" %} (de hook
+  `.claude/hooks/worktree-shell-guard.py` weigert die met uitleg){% endif %}.{% if frontend %} Eén frontend-testbestand:
+  `npm --prefix frontend run test -- <bestand>`.{% endif %} Nooit twee pytest-runs tegelijk op dezelfde testdatabase.
+- Schrijf tests bij wat je bouwt (skill `test-engineer`); een fase is pas klaar als de controles slagen.
+- Documentatie (skill `documentatie`, "Tijdens een fase"): {% if frontend %}nieuwe route → `meta.help` en een conceptartikel in
+  `frontend/src/content/help/`; {% endif %}nieuwe configuratievariabele → `docs/configuratie.md`; nieuw CLI-commando of
+  beheertaak → `docs/beheer.md`. De rest schrijft de documentatie-agent bij het afsluiten van de sprint.
+- Na elke fase schrijft de leider "Stand na fase N" in dit document en een faseverslag
+  `verslag-fase-<n>-<titel>.md` in deze map.
+- **Poorten:** deze app gebruikt {% if database == "postgres" %}Postgres **{{ ports.postgres }}**, {% endif %}backend **{{ ports.backend }}**{% if frontend %}, frontend **{{ ports.frontend }}**{% endif %};
+  testbackends van agents **{{ ports.agent_start }}–{{ ports.agent_end }}** (track A {{ ports.agent_start }}, B {{ ports.agent_start + 1 }}, enz.), end-to-end
+  op **{{ ports.e2e_backend }}/{{ ports.e2e_frontend }}**. Raak poorten van andere apps nooit aan (zie `appcreator ports`).
+
+### Lokaal testen zonder de database van de gebruiker te raken
+{% if database == "postgres" %}
+1. Testdatabase: `docker exec {{ app_slug }}-postgres createdb -U postgres {{ app_slug | replace("-", "_") }}_<naam>_test`
+   (de naam moet "test" bevatten).
+2. Testbackend: `DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@localhost:{{ ports.postgres }}/{{ app_slug | replace("-", "_") }}_<naam>_test .venv/bin/uvicorn app.main:app --port <{{ ports.agent_start }}+>`.
+3. Ruim daarna op: testbackend stoppen, `docker exec {{ app_slug }}-postgres dropdb -U postgres {{ app_slug | replace("-", "_") }}_<naam>_test`.
+{%- elif database == "sqlite" %}
+1. Testdatabase: een eigen SQLite-bestand in de scratchpad, bijv. `DATABASE_URL=sqlite+aiosqlite:///<scratchpad>/<naam>_test.db`.
+2. Testbackend: `DATABASE_URL=… .venv/bin/uvicorn app.main:app --port <{{ ports.agent_start }}+>`.
+3. Ruim daarna op: testbackend stoppen en het bestand verwijderen.
+{%- else %}
+1. Testbackend: `.venv/bin/uvicorn app.main:app --port <{{ ports.agent_start }}+>`.
+2. Ruim daarna op: testbackend stoppen.
+{%- endif %}
+
+## Besluiten (afgestemd met de gebruiker)
+
+- **<onderwerp>**: <besluit, met de reden als die niet vanzelf spreekt>
+
+<!--
+Na elke fase komt hier een blok (nieuwste onderaan, vóór de fasebeschrijvingen):
+
+## Stand na fase N (<titel>) – klaar
+
+- **Besluiten (met de gebruiker)**: …
+- **Datamodel** (migratie `<revision-id>`): …
+- **Backend**: …
+- **API**: …
+{%- if frontend %}
+- **Frontend**: …
+- **Gedrag per scherm**: zichtbaar gedrag dat tests moeten kennen (doorsturen, lege toestanden, wie welke knop ziet)
+{%- endif %}
+- **Opgeruimd**: …
+- **Bugfixes**: …
+- **Todo's**: nieuw `…`, opgelost `…`
+- **Open vragen**: nieuw `…`, beantwoord `…`
+- **Nog open**: … (→ fase M)
+-->
+
+## Fase 1 – <titel> (sequentieel)
+
+**Doel**: <één zin>.
+
+- <aanpak in punten, met bestanden en functies>
+- Foutcodetabel: <endpoint → statuscode per fout>; dit is de enige bron voor statuscodes, ook voor tests en e2e.
+- Contracttests: één bestand per router (`backend/tests/test_contract_<router>.py`, verwacht 501 van de stubs),
+  eigendom van de track die die router bouwt; die track vervangt de 501-verwachtingen zelf.
+- PATCH-semantiek: <per veld: wissen met expliciete `null`, weglaten = ongewijzigd (`exclude_unset`)>.
+- Gedeelde response-bouwers: <functie → bestand → eigenaar, bijv. `build_<entiteit>_read` in `services/…`>.
+{%- if frontend %}
+- Gedeelde weergaveregels: <afronding, sortering, gelijke stand: hoe backend en frontend het hetzelfde doen>.
+- Navigatie per scherm: <eisen uit `{{ ontwerp.navigatie.bestand }}` (links ernaartoe, menu-items, actiekaarten) →
+  fundament of integratie>.
+{%- endif %}
+- Gedeelde testhulpen: <scenario's in `backend/tests/factories.py`{% if frontend %}, getypte mocks uit `frontend/src/test/`{% endif %}>.
+- Gerelateerde todo's en open vragen: <…>
+- Te beslissen: <open keuzes voor deze fase>
+
+## Fase 2 – <titel> (parallel)
+
+**Doel**: <één zin>.
+
+<!-- Eigendom is machineleesbaar voor `{{ skills_dir }}/sprint-plan/check_ownership.py`: één bullet "- Eigendom:"
+     (mag over meerdere ingesprongen regels doorlopen), elk pad tussen backticks. Toegestaan: `*`-globs,
+     `{a,b}`, een kale bestandsnaam (zelfde map als het vorige volle pad), "(+ spec)" / "(+ specs)" na een pad,
+     {% if frontend %}en verkorte paden zonder `frontend/src/` (bijv. `components/x/*`){% else %}en de bekende rootmappen{% endif %}. Tests in `__tests__/` naast een
+     eigen bestand horen er vanzelf bij. Tekst buiten backticks ("nieuw", toelichting) negeert het script. -->
+
+### Track A – <naam>
+
+- Eigendom: <bestanden en mappen, elk pad tussen backticks>
+- <aanpak>
+
+### Track B – <naam>
+
+- Eigendom: <bestanden en mappen, elk pad tussen backticks>
+- <aanpak>
+
+## Fase 3 – Integratie (sequentieel)
+
+**Doel**: tracks samenvoegen{% if frontend %}, routes en navigatie koppelen, types genereren{% endif %} en de stromen end-to-end testen.
+
+- E2E-scenario's: <stroom in stappen>. Noem geen eigen statuscodes; verwijs bij fouten naar de foutcodetabel
+  in fase 1 ("faalt volgens de foutcodetabel").

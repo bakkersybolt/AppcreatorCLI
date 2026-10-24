@@ -1,4 +1,20 @@
-# Schemas package
-{% for e in entiteiten %}
-from app.schemas.{{ e | lower }} import {{ e }}Base, {{ e }}Create, {{ e }}Response
-{% endfor %}
+"""Schemas package: re-exports the Pydantic schemas of all entities."""
+{% if entiteiten %}
+{%- for e in entiteiten | sort %}
+from app.schemas.{{ e | lower }} import (
+    {{ e }}Base,
+    {{ e }}Create,
+    {{ e }}Response,
+)
+{%- endfor %}
+
+__all__ = [
+{%- for e in entiteiten | sort %}
+    "{{ e }}Base",
+    "{{ e }}Create",
+    "{{ e }}Response",
+{%- endfor %}
+]
+{%- else %}
+__all__: list[str] = []
+{%- endif %}

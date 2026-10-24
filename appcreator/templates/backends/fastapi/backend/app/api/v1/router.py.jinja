@@ -1,9 +1,22 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health{% for e in entiteiten %}, {{ e | lower }}{% endfor %}
+
+{% if entiteiten -%}
+from app.api.v1.endpoints import (
+    health,
+{%- for e in entiteiten | map("lower") | sort %}
+    {{ e }},
+{%- endfor %}
+)
+{%- else -%}
+from app.api.v1.endpoints import health
+{%- endif %}
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["Health"])
-
-{% for e in entiteiten %}
-api_router.include_router({{ e | lower }}.router, prefix="/{{ e | lower }}s", tags=["{{ e }}s"])
-{% endfor %}
+{%- for e in entiteiten %}
+api_router.include_router(
+    {{ e | lower }}.router,
+    prefix="/{{ e | lower }}s",
+    tags=["{{ e }}s"],
+)
+{%- endfor %}

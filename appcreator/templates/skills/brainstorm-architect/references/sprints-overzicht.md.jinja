@@ -1,0 +1,28 @@
+# Sprintoverzicht
+
+De eerste versie in sprints. Een plak is één functie die van database tot {% if frontend %}scherm{% else %}endpoint{% endif %} werkt en die de gebruiker kan uitproberen. Het ontwerp staat in [`.docs/ontwerp/`](../ontwerp/README.md).
+
+Elke sprint krijgt een eigen map in deze map, aangemaakt bij het voorbereiden met `/sprint-plan`:
+
+```
+sprint-<nr>-<onderwerp>/
+  bouwplan.md                   # fases, besluiten, "Stand na fase N"
+  verslag-fase-<n>-<titel>.md   # wat er per fase gebeurde
+  verslag-sprint.md             # resultaat en evaluatie van de werkwijze
+```
+
+Vink een plak af als hij gebouwd en getest is, en een sprint als hij op `main` staat. De link naar de sprintmap komt bij de kop zodra de sprint is voorbereid.
+
+## [ ] Sprint 1: `sprint-1-<onderwerp>`
+
+- [ ] **1. <naam van de plak>:** <wat de gebruiker hierna kan>
+  - Entiteiten: <...>
+  - Endpoints: <...>
+{%- if frontend %}
+  - Schermen: <... (#nr uit het ontwerp)>
+{%- endif %}
+- [ ] **2. <naam van de plak>:** <...>
+
+## [ ] Sprint 2: `sprint-2-<onderwerp>`
+
+- [ ] **3. <naam van de plak>:** <...>

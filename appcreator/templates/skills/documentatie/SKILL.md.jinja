@@ -1,0 +1,141 @@
+---
+name: documentatie
+description: "Houdt {% if frontend %}twee soorten documentatie bij, kort, gecategoriseerd en doorzoekbaar - de technische documentatie voor een ontwikkelaar die het beheer overneemt (docs/) en de hulpartikelen voor gebruikers in de app (frontend/src/content/help/){% else %}de technische documentatie bij voor een ontwikkelaar die het beheer overneemt (docs/), kort, gecategoriseerd en doorzoekbaar{% endif %}. Gebruik bij het afsluiten van elke sprint ('documentatie bijwerken'), als een fase een {% if frontend %}scherm, {% endif %}configuratievariabele, CLI-commando of beheertaak toevoegt, of als de gebruiker vraagt om documentatie{% if frontend %} of een hulptekst{% endif %} te schrijven, te verbeteren, te controleren of te vinden."
+---
+
+# Documentatie
+
+{%- if frontend %}
+Twee lezers, twee plekken. Beide in het Nederlands.
+
+| | Technische documentatie | Gebruikershulp |
+| :--- | :--- | :--- |
+| Lezer | Ontwikkelaar die het beheer overneemt | Gebruiker van de app |
+| Vraag | Hoe werkt het, hoe beheer ik het? | Hoe doe ik X? |
+| Plek | `docs/` | `frontend/src/content/help/<categorie>/<slug>.md` |
+| Getoond | In de repo (GitHub, editor) | Hulpscherm in de app (`/help`) en de **?**-knop per scherm |
+| Sjabloon | [docs-onderwerp-template.md](docs-onderwerp-template.md) | [help-artikel-template.md](help-artikel-template.md) |
+{%- else %}
+Eén lezer: de ontwikkelaar die het beheer overneemt. De documentatie staat in `docs/`, in het Nederlands, volgens [docs-onderwerp-template.md](docs-onderwerp-template.md).
+{%- endif %}
+
+**Wat hier niet in hoort** (verwijs ernaar, herhaal het niet):
+
+- De bedoeling en besluiten: `.docs/ontwerp/`. Het proces: `.docs/sprints/`.
+- Endpoints en schema's: de automatische API-documentatie op `/docs` van FastAPI.
+- Uitleg van één functie: een codecommentaar of docstring.
+
+## Regels{% if frontend %} voor beide soorten{% endif %}
+
+- **Eén bestand, één onderwerp.**{% if frontend %} Een hulpartikel beantwoordt één vraag. Maximaal **250 woorden** per hulpartikel en{% else %} Maximaal{% endif %} **400 woorden** per technisch onderwerp, tabellen en codeblokken niet meegerekend. Is het langer, splits het dan en verwijs tussen de delen.
+- **Vaste opbouw** volgens het sjabloon. Geen inleidingen ("In dit artikel lees je…"), geen herhaling van de titel.
+- **Lijsten en tabellen boven lopende tekst.** Stappen genummerd, feiten als opsomming, vergelijkingen als tabel.
+- **Vindbaar:** de bestandsnaam is een Nederlandse kebab-case-slug die zegt waar het over gaat (`leden-uitnodigen.md`). De frontmatter bevat **trefwoorden**: de woorden waarmee iemand zoekt, inclusief synoniemen en probleemformuleringen ("wachtwoord vergeten", "kan niet inloggen").
+- **Beschrijf wat er gebouwd is,** gecontroleerd in de code. Wat alleen in het ontwerp staat, komt er niet in.
+- **Houd de index bij:** `docs/README.md`{% if frontend %} en `frontend/src/content/help/categories.json`{% endif %}.
+
+## Technische documentatie (`docs/`)
+
+```
+docs/
+  README.md                # index: tabel "Ik wil weten… → bestand"
+  architectuur.md          # onderdelen, hoe ze samenhangen, belangrijkste keuzes (met link naar het ontwerp)
+  lokaal-ontwikkelen.md    # installeren, starten, types genereren, testdatabase
+  testen.md                # soorten tests, hoe draaien, de documentatiecontroles
+  configuratie.md          # tabel met elke variabele uit backend/app/core/config.py{% if frontend %} en de frontend-.env{% endif %}
+  beheer.md                # tabel met beheertaken: taak, hoe (commando of scherm), wie
+  onderdelen/              # één bestand per onderdeel: inloggen.md, betalingen.md, …
+```
+
+- `configuratie.md` heeft per variabele: naam, verplicht, standaardwaarde, waarvoor, en of hij geheim is.
+- `beheer.md` bevat de taken die een beheerder uitvoert (bijv. een beheerder aanmaken, migraties, back-up) en wat te doen bij veelvoorkomende problemen.
+- Elk bestand in `onderdelen/` noemt de codepaden, zodat de lezer direct verder kan in de code.
+- `docs/` is bij het genereren van het project aangemaakt met de vaste bestanden. Houd ze kloppend met wat er nu gebouwd is.
+
+{%- if frontend %}
+## Gebruikershulp (`frontend/src/content/help/`)
+
+- **Categorieën** staan in `categories.json` (sleutels in het Engels, titels in het Nederlands) en zijn de mappen. Het project begint met `aan-de-slag`; leid de overige categorieën af uit de stromen in het ontwerp (`.docs/ontwerp/{{ ontwerp.stromen.bestand }}`). Voeg een categorie alleen toe als er minstens drie artikelen in komen.
+- **Frontmatter** (sleutels in het Engels, want de app leest ze; waarden in het Nederlands): `title`, `category`, `keywords`, `roles` (leeg is iedereen; anders de rollen uit het ontwerp), `status` (`draft` of `published`), `updated` (sprint-id).
+- **Koppeling met een scherm:** de route in `frontend/src/router/routes.ts` heeft `meta: { help: '<categorie>/<slug>' }`. Dat is de enige plek waar de koppeling staat. De **?**-knop opent dat artikel.
+- **Schrijfstijl:**
+  - Spreek de lezer aan met "je" en gebruik de woorden die op het scherm staan. Zet knopteksten letterlijk in vet (**Datum kiezen**).
+  - Gebruik geen technische termen. Schrijf dus niet "endpoint" of "status `pending`", maar "zolang de aanvraag nog niet is goedgekeurd".
+  - Hangt een stap af van de rol, zeg dat dan ("Alleen een beheerder ziet…").
+{%- endif %}
+
+## Tijdens een fase (plicht voor elke bouwende agent)
+
+Zodat de controles tijdens de sprint groen blijven en er niets vergeten wordt:
+
+{%- if frontend %}
+- **Nieuwe route:** geef hem `meta.help` en maak een conceptartikel (`status: draft`) met de frontmatter en de sectie "Wat is het".
+{%- endif %}
+- **Nieuwe configuratievariabele:** voeg een regel toe aan `docs/configuratie.md`.
+- **Nieuw CLI-commando of nieuwe beheertaak:** voeg een regel toe aan `docs/beheer.md`.
+
+De rest schrijft de documentatie-agent bij het afsluiten van de sprint.
+
+## Bijwerken na een sprint (vaste stap bij het afsluiten)
+
+De leider-agent start hiervoor een subagent met deze skill (skill `sprint-plan`, mode 4, stap 4). Zonder sprint: voer deze stappen uit na elke afgeronde functie.
+
+1. **Bepaal wat er veranderde:**
+   - `git diff --stat main...HEAD`;
+   - de secties "Stand na fase" in het bouwplan van de sprint;
+   - de faseverslagen;
+   - {% if frontend %}de routes (`frontend/src/router/routes.ts`) en {% endif %}`backend/app/core/config.py`.
+2. **Bepaal per wijziging welk document erbij hoort:**
+
+   | Wijziging | Document |
+   | :--- | :--- |
+{%- if frontend %}
+   | Nieuw of gewijzigd scherm, knop of stap voor de gebruiker | Hulpartikel(en) en `meta.help` |
+{%- endif %}
+   | Nieuwe of gewijzigde configuratievariabele | `docs/configuratie.md` |
+   | Nieuw CLI-commando, beheerscherm of beheertaak | `docs/beheer.md`{% if frontend %} en eventueel een hulpartikel{% endif %} |
+   | Nieuw onderdeel of nieuwe koppeling (inloggen, betalingen, e-mail, bestandsopslag) | `docs/onderdelen/<onderwerp>.md` en `docs/architectuur.md` |
+   | Nieuwe afhankelijkheid of opstartstap | `docs/lokaal-ontwikkelen.md` |
+   | Nieuwe soort test of controle | `docs/testen.md` |
+   | Iets verwijderd of anders gaan werken | Bijwerken of verwijderen, en links herstellen |
+
+3. **Schrijf** volgens de sjablonen:
+{%- if frontend %}
+   - werk conceptartikelen uit tot `status: published`;
+{%- endif %}
+   - zet `{% if frontend %}updated`/`{% endif %}bijgewerkt` op de sprint-id;
+   - werk de indexen bij.
+4. **Ruim op:** klopt een tekst niet meer met de code, pas hem aan of verwijder hem. Liever geen tekst dan een verkeerde.
+5. **Controleer:**
+   - de automatische controles hieronder (die tellen ook de woorden; `wc -w` is niet nodig);
+{%- if frontend %}
+   - er staat geen `status: draft` meer: `grep -rl "status: draft" frontend/src/content/help`.
+{%- endif %}
+6. **Rapporteer** per document: toegevoegd, gewijzigd of verwijderd, met één regel waarom. Dit komt in het sprintverslag onder "Documentatie".
+
+## Automatische controles
+
+Deze controles draaien mee met de gewone tests:
+
+{%- if frontend %}
+- **Frontend (`npm run test`, `frontend/src/content/help/__tests__/docs.spec.ts`):**
+  - elke route behalve de 404 en de ontwikkelschermen (pad begint met `/_`, of `meta.devOnly`) heeft `meta.help`, en die wijst naar een bestaand artikel;
+  - elk artikel heeft geldige frontmatter: de categorie bestaat in `categories.json` en `keywords` is niet leeg;
+  - geen artikel is langer dan 250 woorden;
+  - interne links werken.
+{%- endif %}
+- **Backend (`pytest`, `backend/tests/test_docs.py`):**
+  - elk veld van `Settings` in `backend/app/core/config.py` staat in `docs/configuratie.md`;
+  - geen bestand in `docs/` is langer dan 400 woorden (frontmatter, tabellen en codeblokken niet meegeteld);
+  - relatieve links in `docs/` wijzen naar een bestaand bestand, en een `#anker` naar een bestaande kop;
+  - elk bestand in `docs/` staat in de index `docs/README.md`.
+
+Snel alleen deze controle draaien: `cd backend && .venv/bin/pytest tests/test_docs.py`.
+
+Faalt een controle, dan is de documentatie niet af. Een controle mag niet worden versoepeld om een sprint af te kunnen sluiten.
+
+## Op verzoek van de gebruiker
+
+- **"Schrijf of verbeter de uitleg over X":** zoek eerst of er al een artikel is (`grep -ril "<woord>" docs{% if frontend %} frontend/src/content/help{% endif %}`, ook in de trefwoorden). Vul dat aan in plaats van een tweede te maken.
+- **"Waar staat X beschreven?":** zoek op dezelfde manier en noem de paden.
+- **"Klopt de documentatie nog?":** draai de controles en loop de tabel uit "Bijwerken na een sprint" langs tegen de huidige code. Meld de afwijkingen.

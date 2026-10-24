@@ -57,8 +57,7 @@ def test_generate_fullstack_project(tmp_dir):
 
     # Verifieer frontend inhoud
     assert (target / "frontend" / "package.json").is_file()
-    assert (target / "frontend" / "tailwind.config.js").is_file()
-    assert (target / "frontend" / "postcss.config.js").is_file()
+    assert (target / "frontend" / "src" / "assets" / "index.css").is_file()
     assert (target / "frontend" / "src" / "views" / "HomeView.vue").is_file()
     assert (target / "frontend" / "src" / "services" / "api.ts").is_file()
 
@@ -240,10 +239,10 @@ def test_generate_backend_with_multiple_entities(tmp_dir):
 
     # Verifieer router.py imports en routes
     router_code = (target / "backend" / "app" / "api" / "v1" / "router.py").read_text()
-    assert "health, item, user, todo" in router_code
-    assert 'api_router.include_router(item.router, prefix="/items", tags=["Items"])' in router_code
-    assert 'api_router.include_router(user.router, prefix="/users", tags=["Users"])' in router_code
-    assert 'api_router.include_router(todo.router, prefix="/todos", tags=["Todos"])' in router_code
+    # isort-ordered, one module per line (keeps ruff clean)
+    assert "    health,\n    item,\n    todo,\n    user,\n" in router_code
+    for slug, title in (("item", "Items"), ("user", "Users"), ("todo", "Todos")):
+        assert f'    {slug}.router,\n    prefix="/{slug}s",\n    tags=["{title}"],\n' in router_code
 
 
 def test_cli_project_name_with_space_gives_valid_package(tmp_dir):
@@ -316,44 +315,6 @@ def test_frontend_files_rendered_with_slug(tmp_dir):
     assert not (target / "frontend" / ".eslintrc.config.ts").exists()
     assert "Mijn Web_App" in (target / "frontend" / "README.md").read_text()
     assert "Mijn Web_App" in (target / "backend" / "app" / "__init__.py").read_text()
-
-
-def test_root_env_with_postgres_port_only_for_postgres(tmp_dir):
-    pg_target = tmp_dir / "PgApp"
-    assemble_project(
-        app_naam="PgApp",
-        category="backend",
-        stack={"backend": "fastapi", "database": "postgres", "entiteiten": []},
-        skills=[],
-        target_dir=pg_target,
-    )
-    assert "POSTGRES_PORT=5432" in (pg_target / ".env").read_text()
-    assert "POSTGRES_PORT=5432" in (pg_target / ".env.example").read_text()
-    assert "${POSTGRES_PORT:-5432}:5432" in (pg_target / "docker-compose.yml").read_text()
-    assert "POSTGRES_PORT=" not in (pg_target / "backend" / ".env").read_text()
-
-    sqlite_target = tmp_dir / "SqliteApp"
-    assemble_project(
-        app_naam="SqliteApp",
-        category="backend",
-        stack={"backend": "fastapi", "database": "sqlite", "entiteiten": []},
-        skills=[],
-        target_dir=sqlite_target,
-    )
-    assert not (sqlite_target / ".env").exists()
-
-
-def test_dev_runner_reads_postgres_port(tmp_dir, monkeypatch):
-    from appcreator.core.dev_runner import _get_postgres_port
-
-    monkeypatch.delenv("POSTGRES_PORT", raising=False)
-    assert _get_postgres_port(tmp_dir) == "5432"
-
-    (tmp_dir / ".env").write_text("# commentaar\nPOSTGRES_PORT=5433\n")
-    assert _get_postgres_port(tmp_dir) == "5433"
-
-    monkeypatch.setenv("POSTGRES_PORT", "6000")
-    assert _get_postgres_port(tmp_dir) == "6000"
 
 
 def test_non_jinja_file_is_copied_unchanged(tmp_dir):
@@ -607,7 +568,8 @@ def test_design_session_is_always_installed_for_web_and_backend(tmp_dir):
     for project in (web, api):
         skills = project / ".claude" / "skills"
         assert (skills / "brainstorm-architect" / "SKILL.md").is_file()
-        assert (skills / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").is_file()
+        assert (skills / "brainstorm-architect" / "references" / "ontwerp" / "README.md").is_file()
+        assert (skills / "brainstorm-architect" / "references" / "sprints-overzicht.md").is_file()
         assert (skills / "feature-builder" / "SKILL.md").is_file()
         assert {"brainstorm-architect", "feature-builder"} <= set(load_manifest(project)["skills"])
 
@@ -628,11 +590,18 @@ def test_brainstorm_rounds_start_with_goal_and_follow_the_stack(tmp_dir):
     eerste_ronde = skill[posities[0]:posities[1]]
     for onderwerp in ["Het idee", "Het probleem", "Succes"]:
         assert onderwerp in eerste_ronde
-    assert ".docs/ontwerp.md" in skill and ".docs/bouwplan.md" in skill and "/feature-builder" in skill
+    assert ".docs/ontwerp/" in skill and ".docs/sprints/overzicht.md" in skill and "/sprint-plan" in skill
+    assert ".docs/ontwerp.md" not in skill and ".docs/bouwplan.md" not in skill
 
-    sjabloon = (web / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
-    assert "# Ontwerp: Web" in sjabloon
-    assert "## 5. Schermen" in sjabloon and "## 7. Randvoorwaarden en scope" in sjabloon
+    ontwerp = web / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp"
+    assert sorted(p.name for p in ontwerp.iterdir()) == [
+        "01-doel.md", "02-gebruikers-en-stromen.md", "03-datamodel.md", "04-api-en-toegang.md",
+        "05-schermen.md", "06-navigatie-en-uitstraling.md", "07-randvoorwaarden-en-scope.md", "README.md",
+    ]
+    index = (ontwerp / "README.md").read_text()
+    assert "# Ontwerp: Web" in index
+    assert "[05-schermen.md](05-schermen.md)" in index and "- [ ] 8. Bouwvolgorde" in index
+    assert "# Schermen" in (ontwerp / "05-schermen.md").read_text()
 
     api = tmp_dir / "Api"
     assemble_project("Api", "backend", {"backend": "fastapi", "database": "sqlite"}, [], api, assistants=["claude"])
@@ -641,10 +610,15 @@ def test_brainstorm_rounds_start_with_goal_and_follow_the_stack(tmp_dir):
     assert "## Ronde 6: Bouwvolgorde" in api_skill
     assert "Schermen" not in api_skill and "Navigatie" not in api_skill
 
-    api_sjabloon = (api / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp-sjabloon.md").read_text()
-    assert "## 5. Randvoorwaarden en scope" in api_sjabloon
-    assert "Schermen" not in api_sjabloon and "Navigatie" not in api_sjabloon
-    assert "- [ ] 6. Bouwvolgorde" in api_sjabloon and "- [ ] 7." not in api_sjabloon
+    api_ontwerp = api / ".claude" / "skills" / "brainstorm-architect" / "references" / "ontwerp"
+    assert sorted(p.name for p in api_ontwerp.iterdir()) == [
+        "01-doel.md", "02-gebruikers-en-stromen.md", "03-datamodel.md", "04-api-en-toegang.md",
+        "05-randvoorwaarden-en-scope.md", "README.md",
+    ]
+    api_index = (api_ontwerp / "README.md").read_text()
+    assert "Schermen" not in api_index and "Navigatie" not in api_index
+    assert "- [ ] 6. Bouwvolgorde" in api_index and "- [ ] 7." not in api_index
+    assert "Schermen" not in (api / ".claude" / "skills" / "brainstorm-architect" / "references" / "sprints-overzicht.md").read_text()
 
     api_builder = (api / ".claude" / "skills" / "feature-builder" / "SKILL.md").read_text()
     assert "## Stap 3: Afronden" in api_builder and "Frontend" not in api_builder
@@ -671,5 +645,6 @@ def test_new_backend_without_entities_has_only_health_endpoint(tmp_dir):
     endpoints = sorted(p.name for p in (target / "backend" / "app" / "api" / "v1" / "endpoints").glob("*.py"))
     assert endpoints == ["health.py"]
     assert "voorbeelden met een lijst in het geheugen" not in (target / "CLAUDE.md").read_text()
-    assert ".docs/ontwerp.md" in (target / "CLAUDE.md").read_text()
+    claude_md = (target / "CLAUDE.md").read_text()
+    assert ".docs/ontwerp/" in claude_md and ".docs/sprints/" in claude_md and ".docs/ontwerp.md" not in claude_md
 

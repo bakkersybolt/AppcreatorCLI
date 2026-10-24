@@ -17,7 +17,9 @@ def hello(
 ):
     """Eenvoudig begroetingscommando met Rich opmaak."""
     for _ in range(count):
-        console.print(f"[bold cyan]Hallo {name}![/bold cyan] Welkom bij [green]{{ app_naam }}[/green] 🚀")
+        console.print(
+            f"[bold cyan]Hallo {name}![/bold cyan] Welkom bij [green]{{ app_naam }}[/green] 🚀",
+        )
 
 
 @app.command()

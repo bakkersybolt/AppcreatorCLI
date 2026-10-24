@@ -1,0 +1,19 @@
+# API en toegang
+
+- **Inloggen:** <ja/nee, en hoe gebruikers een account krijgen>
+- **Rechten:** <wie mag wat; mag een gebruiker alleen eigen records zien?>
+
+Alle paden staan onder `/api/v1`.
+
+| Methode | Pad | Doel | Wie mag |
+| :--- | :--- | :--- | :--- |
+| GET | /<resource> | <lijst, met zoeken/filteren/pagineren indien nodig> | <rollen> |
+| POST | /<resource> | <aanmaken> | <rollen> |
+
+## Foutcodes
+
+| Status | Wanneer | Tekst voor de gebruiker |
+| :--- | :--- | :--- |
+| 403 | <geen rechten> | <...> |
+| 409 | <conflict, bijv. dubbel> | <...> |
+| 422 | <ongeldige invoer of bedrijfsregel> | <...> |

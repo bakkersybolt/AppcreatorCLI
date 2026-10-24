@@ -1,5 +1,8 @@
 from functools import lru_cache
-from typing import Optional
+
+{% if database == "postgres" -%}
+from pydantic import field_validator
+{% endif -%}
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,14 +17,24 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    # Origins that may call the API from a browser (the Vite dev server by default)
+    CORS_ORIGINS: list[str] = [{% if frontend == "vue3" %}"http://localhost:{{ ports.frontend }}"{% endif %}]
+{% if database == "postgres" %}
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgrespassword@localhost:{{ ports.postgres }}/{{ app_slug }}_db"
 
-    {% if database == "postgres" %}
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgrespassword@localhost:5432/{{ app_slug }}_db"
-    {% elif database == "sqlite" %}
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _use_asyncpg_driver(cls, value: str) -> str:
+        """Accept a plain `postgresql://` URL (as a server provides) and use the asyncpg driver for it."""
+        for prefix in ("postgresql://", "postgres://"):
+            if value.startswith(prefix):
+                return "postgresql+asyncpg://" + value.removeprefix(prefix)
+        return value
+{%- elif database == "sqlite" %}
     DATABASE_URL: str = "sqlite+aiosqlite:///./app.db"
-    {% else %}
-    DATABASE_URL: Optional[str] = None
-    {% endif %}
+{%- else %}
+    DATABASE_URL: str | None = None
+{%- endif %}
 
 
 @lru_cache

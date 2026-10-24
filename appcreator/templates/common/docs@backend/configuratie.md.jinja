@@ -1,0 +1,53 @@
+---
+onderwerp: Configuratie
+categorie: configuratie
+trefwoorden: [configuratie, instellingen, omgevingsvariabelen, env, .env, settings, geheim, poort, cors, database]
+code:
+  - backend/app/core/config.py
+  - .env
+{%- if frontend %}
+  - frontend/.env
+{%- endif %}
+bijgewerkt: start
+---
+
+# Configuratie
+
+Elke instelling uit `backend/app/core/config.py` staat hieronder; `backend/tests/test_docs.py` controleert dat. Waarden komen uit de omgeving of uit `backend/.env`.
+
+## Backend (`backend/.env`)
+
+| Variabele | Verplicht | Standaard | Waarvoor | Geheim |
+| :--- | :--- | :--- | :--- | :--- |
+| `APP_NAME` | nee | `{{ app_naam }}` | Naam in de API-documentatie | nee |
+| `API_V1_STR` | nee | `/api/v1` | Voorvoegsel van alle routes | nee |
+| `ENVIRONMENT` | nee | `development` | `development` of `production` | nee |
+| `DEBUG` | nee | `True` | Extra foutinformatie; uit in productie | nee |
+| `CORS_ORIGINS` | nee | {% if frontend %}`["http://localhost:{{ ports.frontend }}"]`{% else %}`[]`{% endif %} | Origins die de API vanuit een browser mogen aanroepen (JSON-lijst) | nee |
+| `DATABASE_URL` | {% if database != "none" %}ja{% else %}nee{% endif %} | {% if database == "postgres" %}`postgresql+asyncpg://…@localhost:{{ ports.postgres }}/{{ app_slug }}_db`{% elif database == "sqlite" %}`sqlite+aiosqlite:///./app.db`{% else %}leeg{% endif %} | Verbinding met de database | ja (wachtwoord) |
+
+## Poorten (`.env` in de projectroot)
+
+Gelezen door Docker Compose, `dev.sh`, `appcreator dev`{% if frontend %} en Vite{% endif %}. Zie [Lokaal ontwikkelen](lokaal-ontwikkelen.md#poorten).
+
+| Variabele | Waarvoor |
+| :--- | :--- |
+| `BACKEND_PORT` | Poort van de backend |
+{%- if frontend %}
+| `FRONTEND_PORT` | Poort van de Vite-devserver |
+{%- endif %}
+{%- if database == "postgres" %}
+| `POSTGRES_PORT` | Hostpoort van de databasecontainer |
+{%- endif %}
+| `AGENT_PORT_START` | Eerste poort voor testbackends van agents |
+| `E2E_BACKEND_PORT`, `E2E_FRONTEND_PORT` | Poorten voor end-to-end-tests |
+{%- if frontend %}
+
+## Frontend (`frontend/.env`)
+
+| Variabele | Standaard | Waarvoor |
+| :--- | :--- | :--- |
+| `VITE_PROXY_TARGET` | `http://localhost:<BACKEND_PORT>` | Backend waar de dev-proxy `/api` naartoe stuurt |
+| `VITE_API_URL` | `/api/v1` | Alleen zetten als de API op een ander domein staat |
+| `VITE_APP_VERSION` | `0.1.0` | Versie die de app toont |
+{%- endif %}

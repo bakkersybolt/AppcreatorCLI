@@ -1,0 +1,63 @@
+---
+onderwerp: Lokaal ontwikkelen
+categorie: ontwikkelen
+trefwoorden: [installeren, starten, poorten, docker, venv, worktree, types genereren, proxy, appcreator dev]
+code:
+  - dev.sh
+  - docker-compose.yml
+  - .env
+bijgewerkt: start
+---
+
+# Lokaal ontwikkelen
+
+## Poorten
+
+Deze app heeft een eigen poortblok, zodat hij naast andere apps en worktrees draait. De waarden staan in `.env` in de projectroot; `appcreator ports` toont ze en `appcreator ports --reassign` kiest een nieuw blok.
+
+<!-- appcreator:ports:start -->
+| Wat | Poort |
+| :--- | :--- |
+{%- if frontend %}
+| Frontend (Vite) | {{ ports.frontend }} |
+{%- endif %}
+| Backend | {{ ports.backend }} |
+{%- if database == "postgres" %}
+| PostgreSQL (`{{ app_slug }}-postgres`) | {{ ports.postgres }} |
+{%- endif %}
+| Testbackends van agents | {{ ports.agent_start }}–{{ ports.agent_end }} |
+| End-to-end (backend / frontend) | {{ ports.e2e_backend }} / {{ ports.e2e_frontend }} |
+<!-- appcreator:ports:end -->
+
+## Installeren
+
+1. `cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
+{%- if frontend %}
+2. `cd frontend && npm install`
+{%- endif %}
+3. Git-hooks eenmalig per kloon: `git config core.hooksPath .githooks`.
+
+## Starten
+
+1. Alles samen met gecombineerde logs: `appcreator dev` (of `./dev.sh`).
+{%- if database == "postgres" %} Dat start eerst de database met `docker compose up -d postgres`; het compose-project heet vast `{{ app_slug }}`, dus ook vanuit een worktree ontstaat geen tweede container.{% endif %}
+2. Los: `cd backend && .venv/bin/uvicorn app.main:app --reload --port {{ ports.backend }}`{% if frontend %} en `cd frontend && npm run dev`{% endif %}.
+3. API-documentatie: http://localhost:{{ ports.backend }}/docs.
+{%- if frontend %}
+4. De Vite-proxy stuurt `/api` (ook WebSockets) door naar de backend. Een andere backend kies je met `VITE_PROXY_TARGET`.
+
+## Types genereren
+
+Met de backend aan: `cd frontend && npm run generate:types`. Queryparameters staan per operatie (`operations["…"]["parameters"]["query"]`), niet bij het pad.
+{%- endif %}
+
+## Werken in een worktree
+
+1. `git worktree add ../{{ app_slug }}-<onderwerp> -b <type>/<onderwerp> main`
+2. Link de afhankelijkheden: `ln -s <hoofdmap>/backend/.venv backend/.venv`{% if frontend %} en `ln -s <hoofdmap>/frontend/node_modules frontend/node_modules`{% endif %}; kopieer `.env` en `backend/.env`.
+3. Start de backend op een poort uit het agentblok ({{ ports.agent_start }}+){% if frontend %} en wijs de frontend ernaar met `VITE_PROXY_TARGET=http://localhost:<poort>`{% endif %}.
+
+## Zie ook
+
+- [Configuratie](configuratie.md)
+- [Testen](testen.md)

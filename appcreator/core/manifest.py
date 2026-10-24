@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 MANIFEST_FILENAME = ".appcreator.json"
+MANIFEST_VERSION = "0.2.0"
 
 
 def create_manifest(
@@ -15,17 +16,21 @@ def create_manifest(
     stack: Dict[str, Any],
     skills: List[str],
     assistants: Optional[List[str]] = None,
+    ports: Optional[Dict[str, int]] = None,
+    features: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """Creates a new .appcreator.json manifest file in the project directory."""
     manifest_path = project_dir / MANIFEST_FILENAME
     data = {
         "generator": "AppCreator CLI",
-        "version": "0.1.0",
+        "version": MANIFEST_VERSION,
         "app_naam": app_naam,
         "category": category,
         "stack": stack,
         "skills": skills,
         "assistants": assistants or ["antigravity"],
+        "ports": ports,
+        "features": features or {},
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat(),
     }
@@ -64,3 +69,18 @@ def add_skill_to_manifest(project_dir: Path, skill_name: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def update_manifest(project_dir: Path, **fields: Any) -> bool:
+    """Overwrites top-level fields in .appcreator.json (e.g. ports, features)."""
+    manifest_path = project_dir / MANIFEST_FILENAME
+    if not manifest_path.exists():
+        return False
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except ValueError:
+        return False
+    data.update(fields)
+    data["updated_at"] = datetime.now().isoformat()
+    manifest_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return True

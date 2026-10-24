@@ -18,3 +18,6 @@ dependencies = [
 [project.scripts]
 # Dit koppelt het commando 'appcreator' in de terminal aan de functie 'app' in main.py
 appcreator = "appcreator.main:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

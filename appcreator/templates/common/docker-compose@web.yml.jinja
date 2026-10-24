@@ -1,0 +1,75 @@
+# Vaste projectnaam: elke checkout en git worktree gebruikt dezelfde containers en volumes.
+# Poorten komen uit de .env in de projectroot (zie `appcreator ports`).
+name: {{ app_slug }}
+
+services:
+{% if database == "postgres" %}
+  postgres:
+    image: postgres:16-alpine
+    container_name: {{ app_slug }}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: {{ app_slug }}_db
+    ports:
+      - '${POSTGRES_PORT:-{{ ports.postgres }}}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+{% endif %}
+{% if backend == "fastapi" %}
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: {{ app_slug }}-backend
+    restart: unless-stopped
+    ports:
+      - '${BACKEND_PORT:-{{ ports.backend }}}:8000'
+    environment:
+{% if database == "postgres" %}
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/{{ app_slug }}_db
+{% elif database == "sqlite" %}
+      - DATABASE_URL=sqlite+aiosqlite:///./app.db
+{% endif %}
+      - ENVIRONMENT=development
+{% if frontend == "vue3" %}
+      - CORS_ORIGINS=["http://localhost:${FRONTEND_PORT:-{{ ports.frontend }}}"]
+{% endif %}
+    volumes:
+      - ./backend:/app
+{% if database == "postgres" %}
+    depends_on:
+      postgres:
+        condition: service_healthy
+{% endif %}
+
+{% endif %}
+{% if frontend == "vue3" %}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: {{ app_slug }}-frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-{{ ports.frontend }}}:${FRONTEND_PORT:-{{ ports.frontend }}}'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - FRONTEND_PORT=${FRONTEND_PORT:-{{ ports.frontend }}}
+      # Binnen Docker bereikt de Vite-proxy de backend via de servicenaam
+      - VITE_PROXY_TARGET=http://backend:8000
+
+{% endif %}
+{% if database == "postgres" %}
+volumes:
+  postgres_data:
+{% endif %}

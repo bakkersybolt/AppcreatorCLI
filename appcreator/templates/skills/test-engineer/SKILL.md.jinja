@@ -81,6 +81,16 @@ async def test_health_check(client):
 
 Controleer bij endpoints ook de foutcodes: 404 voor een onbekend id en 422 voor ongeldige invoer.
 
+### Gedeelde testhulpen
+
+Importeer nooit uit een ander testbestand (`from tests.test_… import`). Gedeelde hulp hoort op een vaste plek:
+
+- `tests/conftest.py`: fixtures (zoals `client`{% if database != "none" %} en `db`{% endif %}) en hulpen die elke test kan gebruiken, zoals het aanmaken en inloggen van een gebruiker;
+- `tests/factories.py`: losse rijen per model (`make_<model>(db, **overrides)`; flush, geen commit);
+- `tests/scenarios.py`: samengestelde scenario's van meerdere factories, voor tests die een hele situatie nodig hebben.
+
+Heeft een tweede testbestand een hulpfunctie nodig, verplaats die dan eerst naar een van deze bestanden.
+
 ### Draaien
 
 ```bash
@@ -91,25 +101,9 @@ cd backend && .venv/bin/pytest -v
 
 ## Frontend (Vitest)
 
-### Eenmalige setup
+### Testomgeving
 
-Vitest, Vue Test Utils en jsdom staan in `package.json`, maar er is nog geen configuratie. Maak `frontend/vitest.config.ts` aan als die ontbreekt:
-
-```ts
-import { fileURLToPath } from 'node:url'
-import { defineConfig, mergeConfig } from 'vitest/config'
-import viteConfig from './vite.config'
-
-export default mergeConfig(
-  viteConfig,
-  defineConfig({
-    test: {
-      environment: 'jsdom',
-      root: fileURLToPath(new URL('./', import.meta.url)),
-    },
-  }),
-)
-```
+De testomgeving staat klaar: `frontend/vitest.config.ts` (jsdom, alias `@`), `frontend/src/test/setup.ts` (laadt de Nederlandse zod-teksten) en de gedeelde hulpen in `frontend/src/test/`. Voorbeelden: `frontend/src/views/__tests__/HomeView.spec.ts` en `frontend/src/composables/__tests__/useFormFeedback.spec.ts`.
 
 ### Een test schrijven
 
@@ -118,23 +112,38 @@ Zet tests naast de code in een map `__tests__`, bijvoorbeeld `frontend/src/views
 Vervang de API door een mock, zodat tests zonder backend slagen:
 
 ```ts
-import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import HomeView from '../HomeView.vue'
+
+import { mockedApi } from '@/test/api'
+import { mountView, settle } from '@/test/helpers'
+import HomeView from '@/views/HomeView.vue'
 
 vi.mock('@/services/api', () => ({
-  api: { get: vi.fn().mockResolvedValue({ data: { status: 'healthy' } }) },
+  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }))
+const api = mockedApi()
 
 describe('HomeView', () => {
   it('toont dat de backend verbonden is', async () => {
-    const wrapper = mount(HomeView)
-    await flushPromises()
+    api.get.mockResolvedValue({ data: { status: 'healthy' } })
+    const { wrapper } = await mountView(HomeView, '/')
+    await settle()
 
     expect(wrapper.text()).toContain('Verbonden')
   })
 })
 ```
+
+Gebruik altijd `mockedApi()` uit `frontend/src/test/api.ts`, niet `vi.mocked(api)` of een eigen cast: alleen zo zijn `api.get.mockResolvedValue(…)` en `api.post.mock.calls` getypt. `npm run lint` typecheckt de specs (`vue-tsc --noEmit -p tsconfig.vitest.json`); een typfout in een test laat de lint falen.
+
+Gedeelde helpers staan in `frontend/src/test/helpers.ts`: `mountView(view, path)` (component met router en Pinia), `settle()` en `httpError(status, detail)` (een axios-fout zoals de gemockte `api` die gooit). Zet voorbeelddata (`makeItem(overrides)`) daar ook bij. Gebruik en breid die uit in plaats van eigen helpers per map; importeer nooit uit een ander specbestand.
+
+**Viewtests gebruiken vaste testdata.** Bouw voorbeelddata met de builders in `frontend/src/test/helpers.ts` (of een eigen bestand in `frontend/src/test/`), niet met echte inhoud of kopieën per test. Houd die data gelijk aan de echte API-antwoorden: kijk bij twijfel in de gegenereerde types in `frontend/src/types/schema.d.ts`.
+
+- **vee-validate valideert asynchroon:** `flushPromises()` is niet genoeg; wacht met `settle()`, die ook timers afwacht.
+- **Formulieren:** test per formulier dat een mislukte opslag de `FormAlert` toont, dat een leeg verplicht veld de focus krijgt en dat een Pydantic-422 (`httpError(422, [{ loc: ['body', 'name'], type: 'missing' }])`) bij het veld staat. Mount daarvoor met `attachTo: document.body` (zoals `mountView` doet), anders werkt de focus niet.
+- **reka-ui Select en Tabs:** de popup van een Select gaat in jsdom lastig open. Kies in Vitest een waarde met `wrapper.findComponent(Select).vm.$emit('update:modelValue', 'waarde')`. Een tab wissel je in Vitest met `trigger('mousedown')` op de `TabsTrigger`.
+- **Gegenereerde types:** openapi-typescript zet queryparameters onder `operations["<operation_id>"]`, niet in het blok `paths[...]` (daar staat `query?: never`). Controleer `operations` voordat je meldt dat een parameter ontbreekt.
 
 ### Draaien
 

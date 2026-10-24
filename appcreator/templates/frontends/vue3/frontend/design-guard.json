@@ -1,0 +1,23 @@
+{
+  "uitleg": "Stijlbewaking bij design-rules.md. Per regel: 'pattern' is een reguliere expressie (geldig in JavaScript en Python) die per tekstregel wordt gezocht; 'files' en 'allow' zijn paden relatief aan frontend/ met fnmatch-wildcards, waarin * ook / overspant (src/*.vue = elk .vue-bestand onder src/). Gecontroleerd door src/test/__tests__/design-guard.spec.ts (npm run test) en, als het project die heeft, door de lint-hook na elke bewerking. Pas regels aan met de skill design-system.",
+  "rules": [
+    {
+      "pattern": "(?::|=)\\s*['\"]?#[0-9a-fA-F]{3,8}\\b",
+      "message": "Geen losse hex-kleur: gebruik een thema-klasse (bg-primary, text-muted-foreground) of een token in src/assets/brand/tokens.css.",
+      "files": ["src/*.vue", "src/*.ts", "src/*.css"],
+      "allow": ["src/assets/*", "src/components/ui/*", "*/__tests__/*", "*.spec.ts"]
+    },
+    {
+      "pattern": "-\\[(?:#|(?:rgba?|hsla?|oklch|oklab|color)\\b)",
+      "message": "Geen willekeurige Tailwind-kleur zoals bg-[#...]: gebruik een thema-klasse of voeg een token toe in tokens.css.",
+      "files": ["src/*.vue", "src/*.ts"],
+      "allow": ["src/assets/*", "src/components/ui/*", "*/__tests__/*", "*.spec.ts"]
+    },
+    {
+      "pattern": "(?<![\\w-])dark:[\\w\\[-]",
+      "message": "Geen dark:-varianten: de app heeft (nog) geen donker thema. Kies je er een, volg dan de skill design-system.",
+      "files": ["src/*.vue", "src/*.ts"],
+      "allow": ["src/assets/*", "src/components/ui/*", "*/__tests__/*", "*.spec.ts"]
+    }
+  ]
+}

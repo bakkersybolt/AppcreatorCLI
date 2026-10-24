@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -e
+
+# Stop alle achtergrondprocessen bij afsluiten (Ctrl+C)
+cleanup() {
+    echo ""
+    echo "🛑 Ontvangen stop signaal, alle services afsluiten..."
+    kill $(jobs -p) 2>/dev/null || true
+    wait 2>/dev/null || true
+    echo "✓ Alle services gestopt."
+}
+trap cleanup EXIT INT TERM
+
+echo "🚀 AppCreator Dev Server starten voor {{ app_naam }}..."
+
+# Lees de poorten uit de .env in de projectroot (dezelfde die Docker Compose en Vite gebruiken)
+if [ -f .env ]; then
+    set -a
+    . ./.env
+    set +a
+fi
+BACKEND_PORT="${BACKEND_PORT:-{{ ports.backend }}}"
+FRONTEND_PORT="${FRONTEND_PORT:-{{ ports.frontend }}}"
+export BACKEND_PORT FRONTEND_PORT
+
+{% if database == "postgres" %}
+# 1. Database (PostgreSQL) starten via Docker
+if command -v docker &> /dev/null && [ -f docker-compose.yml ]; then
+    echo "📦 PostgreSQL container starten..."
+    docker compose up -d postgres
+fi
+{% endif %}
+
+{% if backend == "fastapi" %}
+# 2. FastAPI Backend starten
+echo "🐍 Backend starten op http://localhost:${BACKEND_PORT}..."
+if [ -f "backend/.venv/bin/uvicorn" ]; then
+    (cd backend && .venv/bin/uvicorn app.main:app --reload --port "$BACKEND_PORT" 2>&1 | sed -e 's/^/[backend ] /') &
+elif [ -f "backend/.venv/bin/python" ]; then
+    (cd backend && .venv/bin/python -m uvicorn app.main:app --reload --port "$BACKEND_PORT" 2>&1 | sed -e 's/^/[backend ] /') &
+elif command -v uvicorn &> /dev/null; then
+    (cd backend && uvicorn app.main:app --reload --port "$BACKEND_PORT" 2>&1 | sed -e 's/^/[backend ] /') &
+else
+    echo "⚠️  Geen uvicorn gevonden in backend/.venv. Installeer dependencies met: cd backend && pip install -r requirements.txt"
+fi
+{% endif %}
+
+{% if frontend == "vue3" %}
+# 3. Vue 3 Frontend starten
+echo "⚡ Frontend starten op http://localhost:${FRONTEND_PORT}..."
+if [ -d "frontend" ]; then
+    if command -v pnpm &> /dev/null && [ -f "frontend/pnpm-lock.yaml" ]; then
+        (cd frontend && pnpm run dev 2>&1 | sed -e 's/^/[frontend] /') &
+    else
+        (cd frontend && npm run dev 2>&1 | sed -e 's/^/[frontend] /') &
+    fi
+fi
+{% endif %}
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✨ Services draaien:"
+{% if frontend == "vue3" %}
+echo "   • Frontend UI:   http://localhost:${FRONTEND_PORT}"
+{% endif %}
+{% if backend == "fastapi" %}
+echo "   • Backend API:   http://localhost:${BACKEND_PORT}"
+echo "   • API Docs:      http://localhost:${BACKEND_PORT}/docs"
+{% endif %}
+{% if database == "postgres" %}
+echo "   • PostgreSQL:    localhost:${POSTGRES_PORT:-{{ ports.postgres }}}"
+{% endif %}
+echo "   Druk op Ctrl+C om alle services te stoppen."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Wacht tot processen klaar zijn of Ctrl+C wordt ingedrukt
+wait

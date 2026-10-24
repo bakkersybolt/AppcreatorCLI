@@ -1,0 +1,20 @@
+# Technische documentatie
+
+Voor een ontwikkelaar die {{ app_naam }} overneemt: hoe de app nu werkt en hoe je hem beheert. De bedoeling en besluiten staan in `.docs/ontwerp/`, het bouwproces in `.docs/sprints/`, de endpoints op http://localhost:{{ ports.backend }}/docs.
+
+Bijgehouden met de skill `documentatie`: kort, één onderwerp per bestand, en elk bestand staat in deze index. `backend/tests/test_docs.py` controleert dat automatisch.
+
+| Ik wil weten… | Bestand |
+| :--- | :--- |
+| Hoe de app in elkaar zit | [architectuur.md](architectuur.md) |
+| Hoe ik de app lokaal installeer en start | [lokaal-ontwikkelen.md](lokaal-ontwikkelen.md) |
+| Welke poorten de app gebruikt | [lokaal-ontwikkelen.md](lokaal-ontwikkelen.md#poorten) |
+| Hoe ik de tests en de documentatiecontroles draai | [testen.md](testen.md) |
+| Welke instellingen en omgevingsvariabelen er zijn | [configuratie.md](configuratie.md) |
+| Welke beheertaken er zijn | [beheer.md](beheer.md) |
+{%- if frontend %}
+| Hoe de hulpartikelen in de app werken | [onderdelen/hulp.md](onderdelen/hulp.md) |
+| Hoe formulieren fouten tonen en opslaan bevestigen | [onderdelen/formulieren.md](onderdelen/formulieren.md) |
+{%- endif %}
+
+Nieuwe onderdelen (inloggen, een koppeling, een rekenregel) krijgen een eigen bestand in `onderdelen/` volgens het sjabloon van de skill `documentatie`.

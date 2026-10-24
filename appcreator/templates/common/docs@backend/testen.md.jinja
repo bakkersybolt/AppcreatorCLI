@@ -1,0 +1,41 @@
+---
+onderwerp: Testen
+categorie: testen
+trefwoorden: [testen, tests, pytest, {% if frontend %}vitest, {% endif %}lint, ruff, controles, documentatiecontrole, pre-commit]
+code:
+  - backend/tests/
+{%- if frontend %}
+  - frontend/src/**/__tests__/
+{%- endif %}
+bijgewerkt: start
+---
+
+# Testen
+
+Hoe je tests schrijft staat in de skill `test-engineer`. Hier: wat er is en hoe je het draait.
+
+## Hoe het werkt
+
+| Controle | Commando |
+| :--- | :--- |
+| Backend-tests | `cd backend && .venv/bin/pytest` |
+| Backend-lint | `cd backend && .venv/bin/ruff check . && .venv/bin/ruff format --check .` |
+{%- if frontend %}
+| Frontend-tests | `cd frontend && npm run test` |
+| Frontend-lint en types | `cd frontend && npm run lint && npm run build` |
+{%- endif %}
+| Alleen de documentatie | `cd backend && .venv/bin/pytest tests/test_docs.py` |
+
+## Documentatiecontroles
+
+De documentatie wordt getest zoals code; een sprint is niet af als deze controles falen.
+
+- `backend/tests/test_docs.py`: elke instelling staat in [configuratie.md](configuratie.md), geen bestand in `docs/` is langer dan 400 woorden, links en ankers werken, en elk bestand staat in de index.
+{%- if frontend %}
+- `frontend/src/content/help/__tests__/docs.spec.ts`: elke route heeft `meta.help` naar een bestaand hulpartikel, de frontmatter klopt, geen artikel is langer dan 250 woorden en links werken.
+{%- endif %}
+- De pre-commit-hook (`.githooks/pre-commit`) draait ze vanzelf als je documentatie commit.
+
+## Zie ook
+
+- [Lokaal ontwikkelen](lokaal-ontwikkelen.md)

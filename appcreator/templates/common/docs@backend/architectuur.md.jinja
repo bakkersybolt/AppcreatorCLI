@@ -1,0 +1,53 @@
+---
+onderwerp: Architectuur
+categorie: architectuur
+trefwoorden: [architectuur, opbouw, onderdelen, stack, mappen, backend, frontend, database]
+code:
+  - backend/app/
+{%- if frontend %}
+  - frontend/src/
+{%- endif %}
+bijgewerkt: start
+---
+
+# Architectuur
+
+{{ app_naam }} bestaat uit een FastAPI-backend{% if frontend %} en een Vue 3-frontend{% endif %}{% if database == "postgres" %} met PostgreSQL{% elif database == "sqlite" %} met SQLite{% endif %}. Het ontwerp en de reden voor keuzes staan in `.docs/ontwerp/`.
+
+## Hoe het werkt
+
+| Onderdeel | Techniek | Map |
+| :--- | :--- | :--- |
+| API | FastAPI, Pydantic v2, async SQLAlchemy 2.0 | `backend/app/` |
+{%- if frontend %}
+| Webapp | Vue 3, Vite, TypeScript, Tailwind, shadcn-vue | `frontend/src/` |
+{%- endif %}
+{%- if database == "postgres" %}
+| Database | PostgreSQL 16 in Docker | `docker-compose.yml` |
+{%- elif database == "sqlite" %}
+| Database | SQLite-bestand | `backend/app.db` |
+{%- endif %}
+
+1. Alle endpoints staan onder `/api/v1` (`backend/app/api/v1/router.py`); per onderwerp een bestand in `endpoints/`.
+2. Modellen staan in `backend/app/models/`, schema's voor in- en uitvoer in `backend/app/schemas/`.
+{%- if frontend %}
+3. De frontend praat met de API via `src/services/api.ts`. In ontwikkeling stuurt de Vite-proxy `/api` door naar de backend, dus er is geen CORS nodig.
+4. Types voor de API komen uit de OpenAPI-specificatie (`npm run generate:types` → `src/types/schema.d.ts`).
+{%- endif %}
+
+## Waar in de code
+
+| Wat | Pad |
+| :--- | :--- |
+| Instellingen | `backend/app/core/config.py` |
+| Databasesessie | `backend/app/db/session.py` |
+| Afhankelijkheden voor endpoints | `backend/app/api/deps.py` |
+{%- if frontend %}
+| Routes van de webapp | `frontend/src/router/routes.ts` |
+| Thema en design tokens | `frontend/src/assets/` |
+{%- endif %}
+
+## Zie ook
+
+- [Lokaal ontwikkelen](lokaal-ontwikkelen.md)
+- [Configuratie](configuratie.md)

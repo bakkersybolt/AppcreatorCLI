@@ -1,0 +1,135 @@
+# =============================================================================
+# Bouwt backend + frontend, zet de images in ghcr.io en rolt ze volledig
+# automatisch uit op de server. Geen handmatige stappen op de server nodig.
+#
+# Instellingen: deploy/app.env (in de repo)
+#
+# Repository secrets (eenmalig per repo, met scripts/setup-github-secrets.sh):
+#   DEPLOY_HOST         IP-adres van de server
+#   DEPLOY_SSH_KEY      privé-sleutel {{ features.hobbyserver.deploy_key }}
+#   DEPLOY_KNOWN_HOSTS  host-fingerprint van de server
+#   APP_SECRETS         (optioneel) geheime regels KEY=waarde voor de backend
+# =============================================================================
+name: Build & deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [{{ "backend, frontend" if frontend else "backend" }}]  # = mapnamen in de repo, elk met een Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ '{{' }} github.actor {{ '}}' }}
+          password: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+
+      - name: Imagenaam bepalen
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-${{ '{{' }} matrix.component {{ '}}' }}" >> "$GITHUB_ENV"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./${{ '{{' }} matrix.component {{ '}}' }}
+          push: true
+          tags: |
+            ${{ '{{' }} env.IMAGE {{ '}}' }}:latest
+            ${{ '{{' }} env.IMAGE {{ '}}' }}:${{ '{{' }} github.sha {{ '}}' }}
+          cache-from: type=gha,scope=${{ '{{' }} matrix.component {{ '}}' }}
+          cache-to: type=gha,mode=max,scope=${{ '{{' }} matrix.component {{ '}}' }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency: deploy-${{ '{{' }} github.repository {{ '}}' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instellingen uit deploy/app.env laden
+        run: |
+          set -a; . deploy/app.env; set +a
+          [[ "${APP_NAME:-}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "::error::APP_NAME ontbreekt of is ongeldig in deploy/app.env"; exit 1; }
+          [[ -n "${APP_DOMAIN:-}" ]] || { echo "::error::APP_DOMAIN ontbreekt in deploy/app.env"; exit 1; }
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          echo "APP_DOMAIN=$APP_DOMAIN" >> "$GITHUB_ENV"
+
+      - name: SSH klaarzetten
+        env:
+          SSH_KEY: ${{ '{{' }} secrets.DEPLOY_SSH_KEY {{ '}}' }}
+          KNOWN_HOSTS: ${{ '{{' }} secrets.DEPLOY_KNOWN_HOSTS {{ '}}' }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Omgevingsbestand samenstellen
+        env:
+          APP_SECRETS: ${{ '{{' }} secrets.APP_SECRETS {{ '}}' }}
+        run: |
+          umask 077
+          {
+            cat deploy/app.env
+            echo
+            echo "BACKEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-backend"
+{%- if frontend %}
+            echo "FRONTEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-frontend"
+{%- endif %}
+            echo "IMAGE_TAG=$GITHUB_SHA"
+            printf '%s\n' "$APP_SECRETS"
+          } > deploy.env
+
+      - name: Bestanden naar de server
+        env:
+          HOST: ${{ '{{' }} secrets.DEPLOY_HOST {{ '}}' }}
+        run: |
+          # Map aanmaken en bij de allereerste deploy een database-wachtwoord genereren
+          ssh "deploy@$HOST" "set -e
+            mkdir -p /opt/apps/$APP_NAME && cd /opt/apps/$APP_NAME
+            umask 077
+            if [ ! -f .env.generated ]; then
+              echo \"POSTGRES_PASSWORD=\$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40)\" > .env.generated
+              echo 'Nieuw database-wachtwoord aangemaakt'
+            fi"
+          scp deploy/compose.yml "deploy@$HOST:/opt/apps/$APP_NAME/compose.yml"
+          scp deploy.env "deploy@$HOST:/opt/apps/$APP_NAME/.env.deploy"
+
+      - name: Nieuwe versie starten
+        env:
+          HOST: ${{ '{{' }} secrets.DEPLOY_HOST {{ '}}' }}
+          GHCR_TOKEN: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh "deploy@$HOST" "set -e
+            cd /opt/apps/$APP_NAME
+            umask 077
+            cat .env.generated .env.deploy > .env && rm .env.deploy
+            docker login ghcr.io -u '$GITHUB_ACTOR' --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker logout ghcr.io
+            docker image prune -f
+            docker compose ps"
+
+      - name: Controleren of de app bereikbaar is
+        run: |
+          # Bij de eerste deploy vraagt Traefik nog een certificaat aan; even geduld
+          curl -fsS -o /dev/null --retry 24 --retry-delay 5 --retry-all-errors "https://$APP_DOMAIN/"
+          echo "✅ https://$APP_DOMAIN/ is bereikbaar"
+
+      - name: Bij een fout de logs tonen
+        if: failure()
+        env:
+          HOST: ${{ '{{' }} secrets.DEPLOY_HOST {{ '}}' }}
+        run: |
+          ssh "deploy@$HOST" "cd /opt/apps/$APP_NAME && docker compose ps && docker compose logs --tail=50" || true

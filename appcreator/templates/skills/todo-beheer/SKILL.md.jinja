@@ -81,5 +81,7 @@ Zijn er geen todo's, zeg dat dan.
 
 1. Lees de todo en de bestanden die erin staan.
 2. Voer het werk uit zoals bij elke andere taak, volgens de projectregels in `{{ rules_dir }}/`.
-3. Verwijder het todo-bestand als het werk af is, en ook mappen in `.todos/` die daardoor leeg zijn geworden. De geschiedenis staat in git.
+3. Verwijder het todo-bestand als het werk af is, en ook mappen in `.todos/` die daardoor leeg zijn geworden. Neem het verwijderen op in de commit van het werk zelf (op dezelfde branch), zodat de oplossing en het afvinken samen in git staan. De geschiedenis staat in git.
+   - Werk je in een worktree, verwijder de todo dan daar met `git rm`, niet in de hoofdmap.
+   - Staat de todo nog niet in git (alleen lokaal aangemaakt), dan valt er niets mee te committen: verwijder het bestand gewoon en meld dat aan de gebruiker.
 4. Is het werk maar deels af, laat de todo dan staan en werk `## Wat` bij met wat er nog openstaat.

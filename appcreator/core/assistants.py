@@ -66,6 +66,13 @@ RULES: List[Rule] = [
         description="Architectuur- en componentenstandaarden voor de Vue 3 frontend met Shadcn-Vue.",
     ),
     Rule(
+        name="design-rules",
+        stack_key="frontend",
+        stack_value="vue3",
+        globs=["frontend/src/**/*.vue"],
+        description="Stijlregels voor de schermen: tokens, bouwstenen, verboden kleuren en de controle op 390 en 1280 px.",
+    ),
+    Rule(
         name="esp32-rules",
         stack_key="hardware",
         stack_value="esp32",

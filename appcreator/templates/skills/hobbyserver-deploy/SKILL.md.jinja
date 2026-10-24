@@ -1,0 +1,88 @@
+---
+name: hobbyserver-deploy
+description: "Zet deze app online op de hobbyserver via GitHub Actions (ghcr.io + Traefik). Gebruik bij 'deploy', 'zet online', 'breng live', 'push naar productie', of als een deploy mislukt is en uitgezocht moet worden waarom."
+---
+
+# Deploy naar de hobbyserver
+
+Deze app wordt uitgerold door een push naar `main`: `.github/workflows/deploy.yml` bouwt de
+images, zet ze in ghcr.io en start ze op de server. Jij bereidt dat voor, laat de gebruiker
+beslissen, en volgt en controleert het daarna. Antwoord in het Nederlands.
+
+**Een push naar `main` = live zetten.** Commit en push dus nooit zonder uitdrukkelijk "ja".
+
+## 1. Controleren vóór de deploy (alleen lezen)
+
+1. **Instellingen**: lees `deploy/app.env`.
+   - `APP_NAME`: alleen `a-z`, `0-9` en `-`, begint met letter/cijfer.
+   - `APP_DOMAIN` ingevuld, geen `http://`, geen `www.`.
+   - `BACKEND_PORT` gelijk aan de poort waarop de backend in de container luistert
+     (zoek in `backend/Dockerfile` naar `EXPOSE`/`CMD`/`--port`).
+   - Geen geheimen in dit bestand (wachtwoorden, API-sleutels, tokens). Zie je die: stop en meld het;
+     ze horen in het GitHub-secret `APP_SECRETS`.
+2. **Bestanden aanwezig**: `backend/Dockerfile`{% if frontend %}, `frontend/Dockerfile`{% endif %}, `deploy/compose.yml`,
+   `.github/workflows/deploy.yml`. Ontbreekt er iets: stop en meld het.
+3. **Secrets**: `gh secret list` moet `DEPLOY_HOST`, `DEPLOY_SSH_KEY` en `DEPLOY_KNOWN_HOSTS` tonen
+   (alleen namen, nooit waarden). Ontbreken ze: de app is nog niet gekoppeld. Leg uit dat de gebruiker
+   eenmalig `SERVER_IP=<ip> bash scripts/setup-github-secrets.sh` draait, en stop.
+4. **Lokale build als test** (als Docker lokaal draait; anders overslaan en dat melden):
+   ```bash
+   docker build -q -t deploytest-backend ./backend{% if frontend %} && docker build -q -t deploytest-frontend ./frontend{% endif %}
+   ```
+   Mislukt de build: laat de fout zien, leg uit wat er mis is, en stop.
+5. **Wat gaat er mee**: `git status --short`, `git log --oneline origin/main..HEAD` en een korte
+   samenvatting van de wijzigingen (`git diff --stat`). Wijs op bestanden die er niet in horen
+   (`.env`, sleutels, grote bestanden, `node_modules`).
+6. **Branch**: staat de gebruiker niet op `main`, vraag dan of de wijzigingen eerst naar `main`
+   moeten (merge of PR). Doe dat niet op eigen houtje.
+
+## 2. Toestemming vragen
+
+Vat in een paar regels samen: wat er live gaat, naar welk domein, en eventuele aandachtspunten.
+Vraag dan expliciet: **"Zal ik committen en pushen naar `main`? Dat zet het live op https://<APP_DOMAIN>."**
+Stel een duidelijke commitboodschap voor. Ga alleen door na een "ja".
+
+## 3. Uitrollen en volgen
+
+```bash
+git add <bestanden> && git commit -m "<boodschap>"
+git push origin main
+sleep 5; gh run list --workflow deploy.yml --limit 1      # run-id opzoeken
+gh run watch <run-id> --exit-status
+```
+
+## 4. Controleren na de deploy (alleen lezen)
+
+```bash
+curl -sS -o /dev/null -w '%{http_code} in %{time_total}s\n' https://<APP_DOMAIN>/
+curl -sS -o /dev/null -w '%{http_code} -> %{redirect_url}\n' https://www.<APP_DOMAIN>/
+ssh {{ features.hobbyserver.ssh_host }} "cd /opt/apps/<APP_NAME> && docker compose ps"
+ssh {{ features.hobbyserver.ssh_host }} "cd /opt/apps/<APP_NAME> && docker compose logs --tail=30 backend"
+```
+Goed is: hoofddomein 2xx/3xx, `www` stuurt door (301/308) naar het hoofddomein, alle containers
+`Up` (db `healthy`), geen fouten in de backend-log. Meld kort het resultaat met de link.
+
+## 5. Als het misgaat
+
+1. `gh run view <run-id> --log-failed | tail -80` – welke stap faalde?
+2. Veelvoorkomende oorzaken:
+   | Stap / symptoom | Waarschijnlijke oorzaak |
+   |---|---|
+   | build faalt | fout in Dockerfile of code; zelfde fout als lokaal |
+   | `denied` bij pull | workflow mist `packages: write`, of imagenaam klopt niet |
+   | SSH-stap faalt | secrets verkeerd → opnieuw `scripts/setup-github-secrets.sh` draaien |
+   | controle-stap: timeout | DNS wijst niet naar de server, of certificaat nog niet klaar (Traefik-log) |
+   | 404 | `APP_DOMAIN` klopt niet, of frontend-container draait niet |
+   | 502/503 | backend draait niet of luistert op een andere poort dan `BACKEND_PORT` |
+   | backend herstart steeds | `docker compose logs backend`: vaak `DATABASE_URL`, migratie of ontbrekend secret |
+3. Serverlogs: `ssh {{ features.hobbyserver.ssh_host }} "cd /opt/apps/<APP_NAME> && docker compose logs --tail=80"` en
+   `ssh {{ features.hobbyserver.ssh_host }} "cd /opt/apps/proxy && docker compose logs --tail=40 traefik"`.
+4. Leg uit wat er mis is en stel een oplossing voor **in de code van deze repo**. Repareer nooit
+   met de hand op de server. Terugdraaien kan door de vorige commit opnieuw te pushen
+   (`git revert`) – ook dat pas na toestemming.
+
+## Regels
+- Nooit `.env`-bestanden of secrets tonen; `gh secret list` toont alleen namen, dat mag.
+- Nooit `docker compose down -v` of `docker volume rm` op de server (wist de database en `/data`).
+- De deploybestanden (`deploy/compose.yml`, `.github/workflows/deploy.yml`, `deploy/SERVER.md`) zijn
+  voor alle apps op de server gelijk; pas ze niet zelf aan, meld het als daar iets anders moet.

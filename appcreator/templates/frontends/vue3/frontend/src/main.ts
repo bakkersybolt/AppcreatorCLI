@@ -3,7 +3,8 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
-import './assets/index.css' // Bevat Tailwind en Shadcn CSS variabelen
+import './lib/zod-nl' // Dutch default texts for zod rules without their own message
+import './assets/index.css' // Tailwind, the shadcn theme and the brand tokens
 
 const app = createApp(App)
 
