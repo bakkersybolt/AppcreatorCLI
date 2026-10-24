@@ -25,8 +25,18 @@ SEPARATORS = {"&&", "||", ";", "|", "&", ";;", "|&", "(", ")"}
 LOOP_WORDS = {"for", "while", "until"}
 # git commit options that take the next token as their value.
 COMMIT_VALUE_LONG = {
-    "--message", "--file", "--reuse-message", "--reedit-message", "--author", "--date",
-    "--template", "--fixup", "--squash", "--cleanup", "--trailer", "--pathspec-from-file",
+    "--message",
+    "--file",
+    "--reuse-message",
+    "--reedit-message",
+    "--author",
+    "--date",
+    "--template",
+    "--fixup",
+    "--squash",
+    "--cleanup",
+    "--trailer",
+    "--pathspec-from-file",
 }
 COMMIT_VALUE_SHORT = set("mFCct")
 
@@ -154,7 +164,10 @@ def main() -> None:
                 "'npm --prefix frontend run test -- <bestand>').",
             )
         if name == "git" and uses_git_dash_c(seg):
-            block("'git -C <map>' wordt in een worktree geweigerd.", "draai git zonder -C vanuit de root van je worktree.")
+            block(
+                "'git -C <map>' wordt in een worktree geweigerd.",
+                "draai git zonder -C vanuit de root van je worktree.",
+            )
         if name in LOOP_WORDS:
             block(
                 "shell-lussen (for/while/until) worden in een worktree geweigerd.",
@@ -163,7 +176,7 @@ def main() -> None:
         if name == "psql":
             block(
                 "psql staat niet op de host.",
-                f"docker exec {postgres_container(cwd)} psql -U postgres -d <database> -c \"…\"",
+                f'docker exec {postgres_container(cwd)} psql -U postgres -d <database> -c "…"',
             )
         if name == "git" and len(seg) > 1 and seg[1] == "commit":
             if any(s[:2] == ["git", "add"] for s in segs[:index]):
