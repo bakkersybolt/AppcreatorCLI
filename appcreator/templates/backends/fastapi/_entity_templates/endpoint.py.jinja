@@ -1,31 +1,49 @@
-from typing import List
-from fastapi import APIRouter, HTTPException, status
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, status
+
 from app.api.deps import DbSession
-from app.schemas.{{ kern_domein | lower }} import {{ kern_domein }}Create, {{ kern_domein }}Response
+from app.schemas.{{ kern_domein | lower }} import (
+    {{ kern_domein }}Create,
+    {{ kern_domein }}Response,
+)
 
 router = APIRouter()
 
 # In-memory opslag als fallback wanneer er geen database geconfigureerd is
-_mock_items: List[dict] = [
-    {"id": 1, "name": "Voorbeeld {{ kern_domein }}", "description": "Gegenereerd via AppCreator", "created_at": "2026-01-01T00:00:00Z"}
+_mock_items: list[dict] = [
+    {
+        "id": 1,
+        "name": "Voorbeeld {{ kern_domein }}",
+        "description": "Gegenereerd via AppCreator",
+        "created_at": "2026-01-01T00:00:00Z",
+    },
 ]
 
 
-@router.get("/", response_model=List[{{ kern_domein }}Response], summary="Lijst van {{ kern_domein | lower }}s")
+@router.get(
+    "/",
+    response_model=list[{{ kern_domein }}Response],
+    summary="Lijst van {{ kern_domein | lower }}s",
+)
 async def list_{{ kern_domein | lower }}s(db: DbSession):
     """Haal alle {{ kern_domein | lower }} items op."""
     return _mock_items
 
 
-@router.post("/", response_model={{ kern_domein }}Response, status_code=status.HTTP_201_CREATED, summary="Maak nieuwe {{ kern_domein | lower }}")
+@router.post(
+    "/",
+    response_model={{ kern_domein }}Response,
+    status_code=status.HTTP_201_CREATED,
+    summary="Maak nieuwe {{ kern_domein | lower }}",
+)
 async def create_{{ kern_domein | lower }}(payload: {{ kern_domein }}Create, db: DbSession):
     """Maak een nieuwe {{ kern_domein | lower }} aan."""
-    from datetime import datetime, timezone
     new_item = {
         "id": len(_mock_items) + 1,
         "name": payload.name,
         "description": payload.description,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
     _mock_items.append(new_item)
     return new_item

@@ -1,11 +1,16 @@
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class {{ kern_domein }}Base(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100, description="Naam van de {{ kern_domein | lower }}")
-    description: Optional[str] = Field(None, max_length=500, description="Omschrijving")
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Naam van de {{ kern_domein | lower }}",
+    )
+    description: str | None = Field(None, max_length=500, description="Omschrijving")
 
 
 class {{ kern_domein }}Create({{ kern_domein }}Base):
@@ -13,8 +18,8 @@ class {{ kern_domein }}Create({{ kern_domein }}Base):
 
 
 class {{ kern_domein }}Update(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = None
 
 
 class {{ kern_domein }}Response({{ kern_domein }}Base):

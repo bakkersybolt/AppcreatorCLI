@@ -21,3 +21,19 @@ dev = [
 
 [project.scripts]
 {{ app_slug }} = "{{ package_name }}.main:app"
+
+[tool.ruff]
+line-length = 110
+# Matches requires-python, so pyupgrade (UP) never suggests syntax newer than the supported Python
+target-version = "py39"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Typer parameter markers are meant to be used as argument defaults
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["{{ package_name }}"]
