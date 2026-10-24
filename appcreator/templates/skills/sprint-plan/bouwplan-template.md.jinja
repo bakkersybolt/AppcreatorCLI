@@ -41,7 +41,7 @@ map (`verslag-fase-<n>-<titel>.md`, `verslag-sprint.md`).
   worktree op `sprint-<nr>/fase-<n>-<track>` en committen alleen daar. Alleen de leider merget. Pushen alleen
   na akkoord van de gebruiker, aan het eind van de sprint. Engelse conventional commits met de Co-Authored-By-regel.
 - **Bestandseigendom:** een parallelle track wijzigt alleen de bestanden in zijn eigendomslijst. Modellen,
-  migraties, `models/__init__.py`{% if frontend %}, `api/v1/router.py`, `frontend/src/router/index.ts` en `schema.d.ts`{% else %} en `api/v1/router.py`{% endif %} worden
+  migraties, `models/__init__.py`{% if frontend %}, `api/v1/router.py`, `frontend/src/router/routes.ts` en `schema.d.ts`{% else %} en `api/v1/router.py`{% endif %} worden
   alleen in fundament- of integratiefases gewijzigd.
 {%- if database != "none" %}
 - Elke modelwijziging krijgt een migratie (Alembic, zodra die is ingericht; tot dan maakt `create_all` alleen nieuwe

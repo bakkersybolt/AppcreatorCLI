@@ -1,0 +1,114 @@
+---
+name: design-system
+description: "Legt de uitstraling van de app vast in design tokens, design-rules.md en de stijlbewaking, en neemt een ontwerp over uit een screenshot, een URL, Figma, React-code uit een AI-UI-generator of een beschrijving. Gebruik na de ontwerpronde 'Navigatie en uitstraling', als de gebruiker kleuren, lettertype of stijl wil vastleggen of veranderen, of vraagt om een ontwerp of scherm over te nemen."
+---
+
+# Design-system
+
+De uitstraling van de app staat in de repo zelf, los van een ontwerptool. Elk ontwerp, waar het ook vandaan komt, gaat door dezelfde stappen: tokens, bouwstenen, eerst de ontwerpomgeving, dan het echte scherm, en daarna de controles.
+
+| Wat | Waar |
+| :--- | :--- |
+| Design tokens (kleuren, radius, lettertype) | `frontend/src/assets/brand/tokens.css` |
+| Koppeling tokens → thema-klassen (`bg-primary`, ...) | `frontend/src/assets/index.css` |
+| Stijlregels (karakter, bouwstenen, verboden) | `{{ rules_dir }}/design-rules.md` |
+| Stijlbewaking | `frontend/design-guard.json`, gecontroleerd door `frontend/src/test/__tests__/design-guard.spec.ts`{% if assistant == "claude" %} en de lint-hook na elke bewerking{% endif %} |
+| Bouwstenen | `frontend/src/components/common/` en shadcn-vue in `frontend/src/components/ui/` |
+| Ontwerpomgeving (alleen `npm run dev`) | `frontend/src/design/`, op `/_ontwerp` |
+| Logboek van overnames | `.docs/ontwerp/ontwerp-overnames.md` |
+
+## Modus 1: Uitstraling vastleggen
+
+Gebruik deze modus na de ontwerpronde "Navigatie en uitstraling" (`.docs/ontwerp/{{ ontwerp.navigatie.bestand }}`), of als de gebruiker de stijl wil veranderen.
+
+1. **Lees** `.docs/ontwerp/{{ ontwerp.navigatie.bestand }}`: sfeer, kleuren, lettertype, het voorbeeld dat de gebruiker mooi vindt en het belangrijkste apparaat.
+2. **Stel voor**, met concrete waarden:
+   - **Palet:** `primary` en de tekst daarop, `accent`, achtergrond, kaart, tekst en gedempte tekst, en `success`, `warning` en `error`. Schrijf kleuren in `oklch(...)`. Tekst op een kleur heeft een contrast van minstens 4,5:1.
+   - **Lettertype:** één familie, met een terugvaloptie.
+   - **Radius:** de basisradius (`--brand-radius`); de andere hoeken volgen daaruit.
+   - **Dichtheid:** compact (beheerscherm, veel gegevens) of ruim (telefoon, weinig per scherm).
+
+   {% if assistant == "claude" %}Leg de keuzes voor met `AskUserQuestion`, twee of drie opties per vraag, de aanbevolen optie eerst.{% else %}Leg de keuzes voor als genummerde lijst, de aanbevolen optie eerst.{% endif %} Vraag akkoord voordat je iets schrijft.
+3. **Schrijf de tokens** in `tokens.css`. Verander alleen de waarden van de bestaande `--brand-*`-tokens. Een nieuwe kleur krijgt een nieuw token, plus een koppeling in `index.css` (in `:root` én in `@theme inline`). Een ander lettertype: installeer `@fontsource-variable/<naam>`, importeer het in `index.css` en zet het in `--brand-font-sans`.
+4. **Vul `{{ rules_dir }}/design-rules.md`:** het karakter in een paar woorden, welke kleur waarvoor dient, de dichtheid (vaste afstanden zoals `gap-4` en `p-5` in kaarten), en de tabel met bouwstenen.
+5. **Pas `frontend/design-guard.json` aan** op de gekozen stijl, bijvoorbeeld een regel tegen Tailwind-paletkleuren (`bg-blue-500`) of tegen een lettertype dat niet gekozen is. Zie "Stijlbewaking" hieronder.
+6. **Laat het zien:** werk `frontend/src/design/screens/VoorbeeldScherm.vue` bij, start `npm run dev` en open `/_ontwerp/voorbeeld`. Bekijk het op 390 en 1280 px breed. De breedteknoppen maken alleen het kader smaller; de breakpoints (`sm:`, `md:`) volgen het venster, dus maak het venster zelf ook smal.
+7. **Controleer** (zie "Controles") en zet de gekozen waarden in `.docs/ontwerp/{{ ontwerp.navigatie.bestand }}` onder "Kleuren en lettertype".
+
+## Modus 2: Ontwerp overnemen
+
+Gebruik deze modus als de gebruiker een ontwerp aanlevert voor één scherm, een onderdeel of de hele app. Het ontwerp is de bron voor de **indeling en uitstraling**. De app blijft de bron voor **functies en data**.
+
+### De bron lezen
+
+| Bron | Zo lees je hem |
+| :--- | :--- |
+| Screenshot of afbeelding | {% if assistant == "claude" %}Lees het bestand met `Read`{% else %}Open de afbeelding{% endif %}. Vraag om een beeld op telefoon- én desktopbreedte als dat ertoe doet. |
+| URL of HTML | {% if assistant == "claude" %}Haal de pagina op met `WebFetch`{% else %}Haal de pagina op{% endif %}, of lees het HTML-bestand. Let op de CSS-variabelen, lettertypes en afstanden; neem geen teksten of afbeeldingen van een ander over zonder toestemming. |
+| Figma | Via een Figma-MCP-server als die is ingesteld: `get_design_context` voor opbouw en code, `get_variable_defs` voor kleuren, lettertypes en afstanden, `get_screenshot` voor het beeld. Zonder MCP: vraag om een export (afbeelding plus de kleurwaarden). |
+| React-code uit een AI-UI-generator | Lees de componenten (JSX met Tailwind en shadcn/ui) en het thema (`globals.css` of de Tailwind-config). Vertaal met de tabel hieronder. |
+| Beschrijving in tekst | Vertaal de beschrijving naar tokens en bouwstenen, en leg een voorstel voor. |
+
+### Werkwijze
+
+1. **Lees de bron** en beschrijf in drie tot vijf regels wat je ziet: indeling, kleuren, lettertype, afstanden en de onderdelen. Vraag of dat klopt.
+2. **Tokens:** haal de kleuren, radius en het lettertype uit het ontwerp. Ligt een kleur dicht bij een bestaand token, gebruik dan dat token. Een echt nieuwe kleur wordt een nieuw token in `tokens.css` (zie modus 1, stap 3). Nooit een losse kleur in een component.
+3. **Bouwstenen:** kies per onderdeel een bestaande bouwsteen uit de tabel in `design-rules.md`. Komt een blok op meer schermen terug, maak of breid dan een bouwsteen uit in `frontend/src/components/common/` en zet hem in de tabel. Ontbreekt een shadcn-vue-component, installeer het met `frontend/scripts/shadcn-add.sh <naam>` (skill `vue-shadcn`).
+4. **Eerst in de ontwerpomgeving:** bouw het scherm als `frontend/src/design/screens/<Naam>Scherm.vue`, met vaste voorbeelddata en zonder API, en zet het in `frontend/src/design/screens.ts`. Vergelijk het op `/_ontwerp/<sleutel>` met de bron, op 390 en 1280 px.
+5. **Het echte scherm:** neem de opmaak over in de view in `frontend/src/views/`. Verander alleen de template en de klassen. Logica, stores, routes en `data-testid`'s blijven zoals ze zijn.
+6. **Controleer** (zie "Controles"). Pas een unit-test alleen aan als de opbouw bewust is veranderd.
+7. **Leg vast** in `.docs/ontwerp/ontwerp-overnames.md` (maak het bestand aan als het nog niet bestaat), één regel per overname:
+
+   | Datum | Bron | Scherm | Beslissingen en afwijkingen |
+   | :--- | :--- | :--- | :--- |
+
+8. **Rapporteer:** wat is overgenomen, wat niet en waarom, en welke bouwstenen en tokens zijn toegevoegd.
+{%- if assistant == "claude" %}
+
+Meerdere schermen tegelijk? Bouw eerst de gedeelde bouwstenen en tokens, alleen. Verdeel daarna de schermen over subagents, elk in een eigen worktree (zoals bij `sprint-plan`).
+{%- endif %}
+
+### Vertaaltabel React → Vue
+
+| React (JSX) | Vue in deze app |
+| :--- | :--- |
+| `className="..."` | `class="..."`; Tailwind-klassen 1-op-1, maar losse kleuren worden thema-klassen |
+| `cn(...)` | `cn(...)` uit `@/lib/utils` |
+| props (`function Kaart({ title })`) | `defineProps<{ title: string }>()` in `<script setup lang="ts">` |
+| `onClick={...}` | `@click="..."` |
+| `useState` | `ref(...)`; afgeleide waarden met `computed(...)` |
+| `{items.map((x) => <Rij key={x.id} />)}` | `<Rij v-for="x in items" :key="x.id" />` |
+| `{cond && <X />}`, `cond ? <A /> : <B />` | `v-if` / `v-else` |
+| `children` | `<slot />` (benoemde slots voor meer plekken) |
+| `<Link href>` | `<RouterLink :to>` met een named route uit `frontend/src/router/routes.ts` |
+| `lucide-react` | `@lucide/vue` (zelfde icoonnamen) |
+| shadcn/ui (React) | shadcn-vue in `@/components/ui/`, via `frontend/scripts/shadcn-add.sh` |
+| `useState` voor een formulier | vee-validate met zod en `useFormFeedback` (skill `vue-shadcn`) |
+
+### Spelregels
+
+- **Nepdata:** voorbeelddata staat alleen in `frontend/src/design/` of in testfixtures (`frontend/src/test/fixtures/`), nooit in een echte view. Heeft een onderdeel uit het ontwerp nog geen echte data of endpoint, laat het dan weg of zet de tijdelijke waarde in één benoemde constante met een commentaar `// Tijdelijk: nepdata`, en maak een todo "koppelen aan echte data" (skill `todo-beheer`).
+- **Werkende functies blijven.** Laat het ontwerp een functie weg die de app heeft, vorm die dan in de nieuwe stijl, maar haal hem niet weg.
+- **Rechten en zichtbaarheid** blijven zoals ze zijn, ook als het ontwerp iets anders suggereert. Meld zo'n verschil als open vraag (skill `open-vragen`).
+- **Teksten** worden Nederlands en volgen de woorden op de schermen; Engelse ontwerpteksten vertaal je.
+- **Geen React-code** in de app en geen `any`, ook al gebruikte de bron dat.
+- **Botst het ontwerp met `design-rules.md`?** Vraag welke wint. Wint het ontwerp, pas dan de regel en `design-guard.json` aan en meld dat.
+
+## Stijlbewaking
+
+`frontend/design-guard.json` bevat regels met een `pattern` (een reguliere expressie die zowel in JavaScript als in Python werkt), een `message`, `files` en `allow`. De paden zijn relatief aan `frontend/` en gebruiken fnmatch-wildcards: `*` overspant ook `/`, dus `src/*.vue` is elk `.vue`-bestand onder `src/`. Standaard verboden, buiten `src/components/ui/`, `src/assets/` en tests: losse hex-kleuren, willekeurige Tailwind-kleuren (`bg-[#...]`) en `dark:`-varianten.
+
+Een nieuwe regel test je in `design-guard.spec.ts` met een voorbeeld dat wel en een dat niet mag.
+
+**Donker thema gekozen?**
+
+1. Voeg in `tokens.css` een blok `.dark { ... }` toe met dezelfde `--brand-*`-namen.
+2. Zet de klasse `dark` op `<html>` (bijv. met `useDark` uit `@vueuse/core`). `index.css` koppelt `dark:` al aan die klasse.
+3. Haal de `dark:`-regel uit `design-guard.json` en uit "Verboden" in `design-rules.md`.
+4. Bekijk het voorbeeldscherm in beide thema's.
+
+## Controles
+
+- `cd frontend && npm run lint && npm run build && npm run test`, inclusief de stijlbewaking en de hulpcontroles.
+- Het scherm werkt op 390 px en op 1280 px breed: niets valt buiten beeld, niets overlapt, alles is te raken.
+- Er staat geen voorbeelddata in `frontend/src/views/` (behalve een gemarkeerde constante met een todo).

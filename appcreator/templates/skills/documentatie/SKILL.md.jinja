@@ -57,7 +57,7 @@ docs/
 
 - **Categorieën** staan in `categories.json` (sleutels in het Engels, titels in het Nederlands) en zijn de mappen. Het project begint met `aan-de-slag`; leid de overige categorieën af uit de stromen in het ontwerp (`.docs/ontwerp/{{ ontwerp.stromen.bestand }}`). Voeg een categorie alleen toe als er minstens drie artikelen in komen.
 - **Frontmatter** (sleutels in het Engels, want de app leest ze; waarden in het Nederlands): `title`, `category`, `keywords`, `roles` (leeg is iedereen; anders de rollen uit het ontwerp), `status` (`draft` of `published`), `updated` (sprint-id).
-- **Koppeling met een scherm:** de route in `frontend/src/router/index.ts` heeft `meta: { help: '<categorie>/<slug>' }`. Dat is de enige plek waar de koppeling staat. De **?**-knop opent dat artikel.
+- **Koppeling met een scherm:** de route in `frontend/src/router/routes.ts` heeft `meta: { help: '<categorie>/<slug>' }`. Dat is de enige plek waar de koppeling staat. De **?**-knop opent dat artikel.
 - **Schrijfstijl:**
   - Spreek de lezer aan met "je" en gebruik de woorden die op het scherm staan. Zet knopteksten letterlijk in vet (**Datum kiezen**).
   - Gebruik geen technische termen. Schrijf dus niet "endpoint" of "status `pending`", maar "zolang de aanvraag nog niet is goedgekeurd".
@@ -84,7 +84,7 @@ De leider-agent start hiervoor een subagent met deze skill (skill `sprint-plan`,
    - `git diff --stat main...HEAD`;
    - de secties "Stand na fase" in het bouwplan van de sprint;
    - de faseverslagen;
-   - {% if frontend %}de router (`frontend/src/router/index.ts`) en {% endif %}`backend/app/core/config.py`.
+   - {% if frontend %}de routes (`frontend/src/router/routes.ts`) en {% endif %}`backend/app/core/config.py`.
 2. **Bepaal per wijziging welk document erbij hoort:**
 
    | Wijziging | Document |
@@ -119,7 +119,7 @@ Deze controles draaien mee met de gewone tests:
 
 {%- if frontend %}
 - **Frontend (`npm run test`, `frontend/src/content/help/__tests__/docs.spec.ts`):**
-  - elke route behalve de 404 heeft `meta.help`, en die wijst naar een bestaand artikel;
+  - elke route behalve de 404 en de ontwikkelschermen (pad begint met `/_`, of `meta.devOnly`) heeft `meta.help`, en die wijst naar een bestaand artikel;
   - elk artikel heeft geldige frontmatter: de categorie bestaat in `categories.json` en `keywords` is niet leeg;
   - geen artikel is langer dan 250 woorden;
   - interne links werken.
